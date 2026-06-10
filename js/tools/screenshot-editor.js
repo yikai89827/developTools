@@ -10,6 +10,7 @@ class ScreenshotEditor {
     this.startX = 0;
     this.startY = 0;
     this.scale = 1;
+    this.activeInput = null;
 
     this._onMouseDown = this.onMouseDown.bind(this);
     this._onMouseMove = this.onMouseMove.bind(this);
@@ -23,12 +24,21 @@ class ScreenshotEditor {
 
   setMode(mode) {
     this.mode = mode;
+    this.removeActiveInput();
     this.canvas.style.cursor = mode === 'text' ? 'text' : 'crosshair';
+  }
+
+  removeActiveInput() {
+    if (this.activeInput) {
+      this.activeInput.remove();
+      this.activeInput = null;
+    }
   }
 
   load(dataUrl) {
     return new Promise((resolve, reject) => {
       this.shapes = [];
+      this.removeActiveInput();
       this.image.onload = () => {
         const maxW = this.wrap.clientWidth || 800;
         const maxH = Math.max(300, window.innerHeight * 0.5);
@@ -44,23 +54,16 @@ class ScreenshotEditor {
   }
 
   redraw(previewRect) {
-    const { ctx, canvas, image, scale, shapes } = this;
+    const { ctx, canvas, image, shapes } = this;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
-
     shapes.forEach(shape => this.drawShape(shape));
-
-    if (previewRect) {
-      this.drawRect(previewRect, true);
-    }
+    if (previewRect) this.drawRect(previewRect, true);
   }
 
   drawShape(shape) {
-    if (shape.type === 'rect') {
-      this.drawRect(shape, false);
-    } else if (shape.type === 'text') {
-      this.drawText(shape);
-    }
+    if (shape.type === 'rect') this.drawRect(shape, false);
+    else if (shape.type === 'text') this.drawText(shape);
   }
 
   drawRect(rect, preview) {
@@ -85,26 +88,28 @@ class ScreenshotEditor {
 
   getPos(e) {
     const rect = this.canvas.getBoundingClientRect();
+    const scaleX = this.canvas.width / rect.width;
+    const scaleY = this.canvas.height / rect.height;
     return {
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top
+      x: (e.clientX - rect.left) * scaleX,
+      y: (e.clientY - rect.top) * scaleY
     };
   }
 
   onMouseDown(e) {
     if (!this.image.src) return;
-    const pos = this.getPos(e);
 
-    if (this.mode === 'rect') {
-      this.drawing = true;
-      this.startX = pos.x;
-      this.startY = pos.y;
+    if (this.mode === 'text') {
+      e.preventDefault();
+      const pos = this.getPos(e);
+      setTimeout(() => this.addTextAt(e.clientX, e.clientY, pos.x, pos.y), 0);
       return;
     }
 
-    if (this.mode === 'text') {
-      this.addTextAt(pos.x, pos.y);
-    }
+    const pos = this.getPos(e);
+    this.drawing = true;
+    this.startX = pos.x;
+    this.startY = pos.y;
   }
 
   onMouseMove(e) {
@@ -131,46 +136,57 @@ class ScreenshotEditor {
     this.redraw();
   }
 
-  addTextAt(x, y) {
+  addTextAt(clientX, clientY, canvasX, canvasY) {
+    this.removeActiveInput();
+
+    const wrapRect = this.wrap.getBoundingClientRect();
     const input = document.createElement('input');
     input.type = 'text';
     input.className = 'screenshot-text-input';
     input.placeholder = '输入文字，Enter 确认';
-    input.style.left = `${x}px`;
-    input.style.top = `${y}px`;
+    input.style.left = `${clientX - wrapRect.left}px`;
+    input.style.top = `${clientY - wrapRect.top}px`;
 
-    const remove = () => input.remove();
-
+    let committed = false;
     const commit = () => {
+      if (committed) return;
+      committed = true;
       const text = input.value.trim();
       if (text) {
-        this.shapes.push({ type: 'text', x, y, text, fontSize: 16, color: '#ff4d4f' });
+        this.shapes.push({ type: 'text', x: canvasX, y: canvasY, text, fontSize: 16, color: '#ff4d4f' });
         this.redraw();
       }
-      remove();
+      this.removeActiveInput();
     };
 
     input.addEventListener('keydown', (ev) => {
+      ev.stopPropagation();
       if (ev.key === 'Enter') {
         ev.preventDefault();
         commit();
       } else if (ev.key === 'Escape') {
-        remove();
+        committed = true;
+        this.removeActiveInput();
       }
     });
 
-    input.addEventListener('blur', commit);
+    input.addEventListener('blur', () => {
+      setTimeout(commit, 120);
+    });
 
     this.wrap.appendChild(input);
+    this.activeInput = input;
     input.focus();
   }
 
   undo() {
+    this.removeActiveInput();
     this.shapes.pop();
     this.redraw();
   }
 
   clear() {
+    this.removeActiveInput();
     this.shapes = [];
     this.redraw();
   }

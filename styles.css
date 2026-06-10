@@ -673,11 +673,12 @@ textarea.has-result {
   position: relative;
   display: inline-block;
   max-width: 100%;
-  border: 1px dashed var(--border-color);
+  border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
-  background: var(--bg-secondary);
+  background: var(--bg-primary);
   overflow: auto;
   max-height: 60vh;
+  line-height: 0;
 }
 
 #screenshot-canvas {
@@ -688,20 +689,26 @@ textarea.has-result {
 
 .screenshot-text-input {
   position: absolute;
-  min-width: 120px;
+  min-width: 140px;
   padding: 4px 8px;
-  border: 1px solid var(--accent);
+  border: 2px solid var(--accent);
   border-radius: 4px;
-  background: rgba(13, 17, 23, 0.92);
+  background: rgba(13, 17, 23, 0.95);
   color: #ff4d4f;
   font-size: 14px;
   outline: none;
-  z-index: 5;
+  z-index: 10;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+}
+
+#screenshot-preview[hidden],
+#screenshot-editor[hidden] {
+  display: none !important;
 }
 
 #image-preview,
 #svg-preview,
-#screenshot-preview,
+#screenshot-preview:not([hidden]),
 #qrcode-preview,
 #qrcode-image-preview {
   margin: 16px 0;
