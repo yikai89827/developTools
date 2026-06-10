@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>开发者工具</title>
+  <link rel="stylesheet" href="float.css">
+</head>
+<body>
+  <div class="float-dock" id="float-dock">
+    <button class="dock-toggle" id="dock-toggle" title="展开工具列表">
+      <span class="dock-icon">⚡</span>
+      <span class="dock-arrow">‹</span>
+    </button>
+    <div class="dock-panel" id="dock-panel">
+      <div class="dock-header">
+        <span>开发者工具</span>
+        <button class="dock-close" id="dock-collapse" title="收起">›</button>
+      </div>
+      <div class="dock-list" id="dock-list"></div>
+      <button class="dock-restore" id="dock-restore">打开主窗口</button>
+    </div>
+  </div>
+  <script src="float.js"></script>
+</body>
+</html>

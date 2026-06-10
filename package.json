@@ -1,0 +1,40 @@
+{
+  "name": "dev-tools-app",
+  "version": "1.0.0",
+  "description": "离线开发者工具",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder",
+    "build:win": "electron-builder --win"
+  },
+  "keywords": [
+    "developer",
+    "tools",
+    "electron"
+  ],
+  "author": "DevTools",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1"
+  },
+  "dependencies": {
+    "axios": "^1.6.0",
+    "js-base64": "^3.7.5",
+    "js-beautify": "^1.14.11",
+    "qrcode": "^1.5.3",
+    "qrcode-reader": "^1.0.4",
+    "uuid": "^9.0.1"
+  },
+  "build": {
+    "appId": "com.devtools.app",
+    "productName": "开发者工具",
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": "nsis"
+    }
+  }
+}

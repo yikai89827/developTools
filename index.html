@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>开发者工具</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-container">
+    <div class="sidebar">
+      <div class="logo">
+        <div class="logo-icon">⚡</div>
+        <span>开发者工具</span>
+      </div>
+      <nav class="tool-list">
+        <button class="tool-btn active" data-tool="generator">
+          <span class="icon">🔑</span>
+          <span class="label">生成器</span>
+          <span class="shortcut">Ctrl+1</span>
+        </button>
+        <button class="tool-btn" data-tool="color">
+          <span class="icon">🎨</span>
+          <span class="label">颜色工具</span>
+          <span class="shortcut">Ctrl+2</span>
+        </button>
+        <button class="tool-btn" data-tool="json">
+          <span class="icon">📄</span>
+          <span class="label">JSON工具</span>
+          <span class="shortcut">Ctrl+3</span>
+        </button>
+        <button class="tool-btn" data-tool="crypto">
+          <span class="icon">🔐</span>
+          <span class="label">加密工具</span>
+          <span class="shortcut">Ctrl+4</span>
+        </button>
+        <button class="tool-btn" data-tool="code">
+          <span class="icon">💻</span>
+          <span class="label">代码工具</span>
+          <span class="shortcut">Ctrl+5</span>
+        </button>
+        <button class="tool-btn" data-tool="http">
+          <span class="icon">🌐</span>
+          <span class="label">HTTP工具</span>
+          <span class="shortcut">Ctrl+6</span>
+        </button>
+        <button class="tool-btn" data-tool="regex">
+          <span class="icon">🔍</span>
+          <span class="label">正则工具</span>
+          <span class="shortcut">Ctrl+7</span>
+        </button>
+        <button class="tool-btn" data-tool="time">
+          <span class="icon">⏰</span>
+          <span class="label">时间转换</span>
+          <span class="shortcut">Ctrl+8</span>
+        </button>
+        <button class="tool-btn" data-tool="base">
+          <span class="icon">🔢</span>
+          <span class="label">进制转换</span>
+          <span class="shortcut">Ctrl+9</span>
+        </button>
+        <button class="tool-btn" data-tool="image">
+          <span class="icon">🖼️</span>
+          <span class="label">图片工具</span>
+          <span class="shortcut">Ctrl+0</span>
+        </button>
+        <button class="tool-btn" data-tool="qrcode">
+          <span class="icon">📱</span>
+          <span class="label">二维码</span>
+        </button>
+        <button class="tool-btn" data-tool="mock">
+          <span class="icon">📊</span>
+          <span class="label">Mock工具</span>
+        </button>
+      </nav>
+      <div class="sidebar-footer">v1.0.0</div>
+    </div>
+
+    <div class="main-content">
+      <div id="generator-tool" class="tool-panel active">
+        <div class="panel-header">
+          <h2>🔑 生成器</h2>
+          <div class="tool-tabs">
+            <button class="tab-btn active" data-tab="password-generator">密码生成</button>
+            <button class="tab-btn" data-tab="uuid-generator">UUID生成</button>
+          </div>
+        </div>
+        <div class="panel-body">
+          <div id="password-generator" class="tab-content active">
+            <div class="tool-form">
+              <div class="input-group input-narrow">
+                <label>密码长度</label>
+                <input type="number" id="password-length" value="16" min="4" max="128" />
+              </div>
+              <div class="checkbox-group">
+                <label><input type="checkbox" id="password-uppercase" checked> 大写字母</label>
+                <label><input type="checkbox" id="password-lowercase" checked> 小写字母</label>
+                <label><input type="checkbox" id="password-numbers" checked> 数字</label>
+                <label><input type="checkbox" id="password-symbols"> 特殊字符</label>
+              </div>
+              <div class="input-group">
+                <label>生成结果</label>
+                <input type="text" id="password-output" readonly placeholder="生成的密码" />
+              </div>
+              <div class="action-bar">
+                <button type="button" class="btn btn-primary" id="generate-password">生成密码</button>
+                <button type="button" class="btn btn-secondary" id="copy-password">复制密码</button>
+              </div>
+            </div>
+          </div>
+          <div id="uuid-generator" class="tab-content">
+            <div class="tool-form">
+              <div class="input-group">
+                <label>生成结果</label>
+                <input type="text" id="uuid-output" readonly placeholder="生成的UUID" />
+              </div>
+              <div class="action-bar">
+                <button type="button" class="btn btn-primary" id="generate-uuid">生成UUID</button>
+                <button type="button" class="btn btn-secondary" id="copy-uuid">复制UUID</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="color-tool" class="tool-panel">
+        <div class="panel-header">
+          <h2>🎨 颜色工具</h2>
+        </div>
+        <div class="panel-body">
+          <div class="color-converter">
+            <div class="input-group">
+              <label>十六进制</label>
+              <input type="text" id="hex-input" placeholder="#FF5733" />
+            </div>
+            <div class="input-group">
+              <label>RGB</label>
+              <input type="text" id="rgb-input" placeholder="rgb(255, 87, 51)" />
+            </div>
+            <div class="input-group">
+              <label>HSL</label>
+              <input type="text" id="hsl-input" placeholder="hsl(9, 100%, 60%)" />
+            </div>
+            <div class="input-group">
+              <label>颜色预览</label>
+              <div class="color-preview" id="color-preview"></div>
+            </div>
+            <div class="input-group">
+              <label>颜色选择器</label>
+              <input type="color" id="color-picker" />
+            </div>
+            <div class="input-group">
+              <label>颜色名称</label>
+              <input type="text" id="color-name" readonly />
+            </div>
+            <button class="btn btn-primary" id="copy-hex">复制十六进制</button>
+            <button class="btn btn-secondary" id="copy-rgb">复制RGB</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="json-tool" class="tool-panel">
+        <div class="panel-header">
+          <h2>📄 JSON工具</h2>
+          <div class="tool-tabs">
+            <button class="tab-btn active" data-tab="json-format">美化</button>
+            <button class="tab-btn" data-tab="json-compare">比对</button>
+            <button class="tab-btn" data-tab="json-minify">压缩</button>
+          </div>
+        </div>
+        <div class="panel-body">
+          <div id="json-format" class="tab-content active">
+            <div class="dual-panel">
+              <div class="panel-col">
+                <label class="field-label">输入 JSON</label>
+                <textarea id="json-input" placeholder="输入JSON..."></textarea>
+              </div>
+              <div class="panel-col">
+                <label class="field-label">输出结果</label>
+                <textarea id="json-output" readonly placeholder="输出结果..."></textarea>
+              </div>
+            </div>
+            <div class="action-bar">
+              <button type="button" class="btn btn-primary" id="format-json">美化JSON</button>
+              <button type="button" class="btn btn-secondary" id="copy-json">复制结果</button>
+            </div>
+          </div>
+          <div id="json-compare" class="tab-content">
+            <div class="compare-group">
+              <div class="panel-col">
+                <label class="field-label">JSON A</label>
+                <textarea id="json-a" placeholder="JSON A"></textarea>
+              </div>
+              <div class="panel-col">
+                <label class="field-label">JSON B</label>
+                <textarea id="json-b" placeholder="JSON B"></textarea>
+              </div>
+            </div>
+            <div id="json-diff"></div>
+            <div class="action-bar">
+              <button type="button" class="btn btn-primary" id="compare-json">比对JSON</button>
+            </div>
+          </div>
+          <div id="json-minify" class="tab-content">
+            <div class="dual-panel">
+              <div class="panel-col">
+                <label class="field-label">输入 JSON</label>
+                <textarea id="minify-input" placeholder="输入JSON..."></textarea>
+              </div>
+              <div class="panel-col">
+                <label class="field-label">压缩结果</label>
+                <textarea id="minify-output" readonly placeholder="压缩结果..."></textarea>
+              </div>
+            </div>
+            <div class="action-bar">
+              <button type="button" class="btn btn-primary" id="minify-json">压缩JSON</button>
+              <button type="button" class="btn btn-secondary" id="copy-minify">复制结果</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="crypto-tool" class="tool-panel">
+        <div class="panel-header">
+          <h2>🔐 加密工具</h2>
+          <div class="tool-tabs">
+            <button class="tab-btn active" data-tab="crypto-hash">哈希摘要</button>
+            <button class="tab-btn" data-tab="crypto-symmetric">对称加解密</button>
+            <button class="tab-btn" data-tab="crypto-encode">编码转换</button>
+          </div>
+        </div>
+        <div class="panel-body">
+          <div id="crypto-hash" class="tab-content active">
+            <div class="crypto-group">
+              <div class="input-group">
+                <label>输入文本</label>
+                <textarea id="hash-input" placeholder="输入要计算哈希的文本"></textarea>
+              </div>
+              <div class="input-group">
+                <label>哈希算法</label>
+                <select id="hash-algo">
+                  <option value="md5">MD5</option>
+                  <option value="sha1">SHA-1</option>
+                  <option value="sha256">SHA-256</option>
+                  <option value="sha512">SHA-512</option>
+                </select>
+              </div>
+              <div class="action-bar">
+                <button type="button" class="btn btn-primary" id="hash-exec">计算哈希</button>
+                <button type="button" class="btn btn-secondary" id="copy-hash">复制结果</button>
+              </div>
+              <div class="input-group">
+                <label>结果</label>
+                <textarea id="hash-output" readonly placeholder="哈希结果..."></textarea>
+              </div>
+            </div>
+          </div>
+          <div id="crypto-symmetric" class="tab-content">
+            <div class="crypto-group">
+              <div class="input-group">
+                <label>操作模式</label>
+                <select id="sym-mode">
+                  <option value="encrypt">加密</option>
+                  <option value="decrypt">解密</option>
+                </select>
+              </div>
+              <div class="input-group">
+                <label>加密算法</label>
+                <select id="sym-algo">
+                  <option value="aes-256-cbc">AES-256-CBC</option>
+                  <option value="aes-128-cbc">AES-128-CBC</option>
+                  <option value="aes-256-ecb">AES-256-ECB</option>
+                  <option value="aes-128-ecb">AES-128-ECB</option>
+                </select>
+              </div>
+              <div class="input-group">
+                <label>密钥 <span class="label-hint">（必填）</span></label>
+                <input type="text" id="sym-key" placeholder="输入加密密钥" />
+              </div>
+              <div class="input-group" id="sym-iv-group">
+                <label>IV 向量 <span class="label-hint">（可选，留空则自动生成/从密文解析）</span></label>
+                <input type="text" id="sym-iv" placeholder="十六进制 IV，如 a1b2c3..." />
+              </div>
+              <div class="input-group">
+                <label id="sym-input-label">明文</label>
+                <textarea id="sym-input" placeholder="输入要加密的明文"></textarea>
+              </div>
+              <div class="action-bar">
+                <button type="button" class="btn btn-primary" id="sym-exec">执行</button>
+                <button type="button" class="btn btn-secondary" id="sym-fill-decrypt">密文填入解密</button>
+                <button type="button" class="btn btn-secondary" id="copy-sym">复制结果</button>
+              </div>
+              <div class="input-group">
+                <label>结果</label>
+                <textarea id="sym-output" readonly placeholder="输出结果..."></textarea>
+              </div>
+            </div>
+          </div>
+          <div id="crypto-encode" class="tab-content">
+            <div class="crypto-group">
+              <div class="input-group">
+                <label>转换类型</label>
+                <select id="encode-algo">
+                  <option value="base64-encode">Base64 编码</option>
+                  <option value="base64-decode">Base64 解码</option>
+                  <option value="hex-encode">Hex 编码</option>
+                  <option value="hex-decode">Hex 解码</option>
+                  <option value="url-encode">URL 编码</option>
+                  <option value="url-decode">URL 解码</option>
+                </select>
+              </div>
+              <div class="input-group">
+                <label>输入</label>
+                <textarea id="encode-input" placeholder="输入文本..."></textarea>
+              </div>
+              <div class="action-bar">
+                <button type="button" class="btn btn-primary" id="encode-exec">执行</button>
+                <button type="button" class="btn btn-secondary" id="copy-encode">复制结果</button>
+              </div>
+              <div class="input-group">
+                <label>结果</label>
+                <textarea id="encode-output" readonly placeholder="输出结果..."></textarea>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="code-tool" class="tool-panel">
+        <div class="panel-header">
+          <h2>💻 代码工具</h2>
+          <div class="tool-tabs">
+            <button class="tab-btn active" data-tab="code-beautify">代码美化</button>
+            <button class="tab-btn" data-tab="code-minify">代码压缩</button>
+          </div>
+        </div>
+        <div class="panel-body">
+          <div id="code-beautify" class="tab-content active">
+            <div class="input-group">
+              <label>代码类型</label>
+              <select id="beautify-lang">
+                <option value="js">JavaScript</option>
+                <option value="css">CSS</option>
+                <option value="html">HTML</option>
+              </select>
+            </div>
+            <div class="dual-panel">
+              <div class="panel-col">
+                <label class="field-label">输入代码</label>
+                <textarea id="beautify-input" placeholder="输入代码..."></textarea>
+              </div>
+              <div class="panel-col">
+                <label class="field-label">美化结果</label>
+                <textarea id="beautify-output" readonly placeholder="美化结果..."></textarea>
+              </div>
+            </div>
+            <div class="action-bar">
+              <button type="button" class="btn btn-primary" id="beautify-code">美化代码</button>
+              <button type="button" class="btn btn-secondary" id="copy-beautify">复制结果</button>
+            </div>
+          </div>
+          <div id="code-minify" class="tab-content">
+            <div class="dual-panel">
+              <div class="panel-col">
+                <label class="field-label">输入代码</label>
+                <textarea id="minify-code-input" placeholder="输入代码..."></textarea>
+              </div>
+              <div class="panel-col">
+                <label class="field-label">压缩结果</label>
+                <textarea id="minify-code-output" readonly placeholder="压缩结果..."></textarea>
+              </div>
+            </div>
+            <div class="action-bar">
+              <button type="button" class="btn btn-primary" id="minify-code">压缩代码</button>
+              <button type="button" class="btn btn-secondary" id="copy-minify-code">复制结果</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="http-tool" class="tool-panel">
+        <div class="panel-header">
+          <h2>🌐 HTTP工具</h2>
+        </div>
+        <div class="panel-body">
+          <div class="http-group">
+            <div class="input-row http-row">
+              <select id="http-method" class="http-method">
+                <option value="GET">GET</option>
+                <option value="POST">POST</option>
+                <option value="PUT">PUT</option>
+                <option value="DELETE">DELETE</option>
+                <option value="PATCH">PATCH</option>
+              </select>
+              <input type="text" id="http-url" placeholder="输入URL" />
+              <button class="btn btn-primary" id="send-request">发送请求</button>
+            </div>
+            <div class="input-group">
+              <label>Headers</label>
+              <textarea id="http-headers" placeholder='{"Content-Type": "application/json"}'></textarea>
+            </div>
+            <div class="input-group">
+              <label>Body</label>
+              <textarea id="http-body" placeholder="输入请求体..."></textarea>
+            </div>
+            <div class="input-group">
+              <label>响应结果</label>
+              <textarea id="http-response" readonly placeholder="响应结果..."></textarea>
+            </div>
+            <div class="input-group">
+              <label>响应状态</label>
+              <input type="text" id="http-status" readonly />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="regex-tool" class="tool-panel">
+        <div class="panel-header">
+          <h2>🔍 正则工具</h2>
+        </div>
+        <div class="panel-body">
+          <div class="regex-group">
+            <div class="input-group">
+              <label>正则表达式</label>
+              <input type="text" id="regex-pattern" placeholder="输入正则表达式" />
+            </div>
+            <div class="input-group">
+              <label>测试文本</label>
+              <textarea id="regex-test" placeholder="输入测试文本"></textarea>
+            </div>
+            <div class="input-group">
+              <label>匹配结果</label>
+              <textarea id="regex-result" readonly placeholder="匹配结果..."></textarea>
+            </div>
+            <button class="btn btn-primary" id="test-regex">测试正则</button>
+            <button class="btn btn-secondary" id="copy-regex">复制结果</button>
+            <div class="regex-presets">
+              <h4>常用正则</h4>
+              <button class="preset-btn" data-preset="email">邮箱</button>
+              <button class="preset-btn" data-preset="phone">手机号</button>
+              <button class="preset-btn" data-preset="url">URL</button>
+              <button class="preset-btn" data-preset="ip">IP地址</button>
+              <button class="preset-btn" data-preset="date">日期</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="time-tool" class="tool-panel">
+        <div class="panel-header">
+          <h2>⏰ 时间转换</h2>
+        </div>
+        <div class="panel-body">
+          <div class="time-group">
+            <div class="input-group">
+              <label>时间戳</label>
+              <input type="text" id="timestamp-input" placeholder="输入时间戳" />
+            </div>
+            <div class="input-group">
+              <label>日期时间</label>
+              <input type="datetime-local" id="datetime-input" />
+            </div>
+            <div class="input-group">
+              <label>格式化结果</label>
+              <input type="text" id="time-formatted" readonly placeholder="格式化结果" />
+            </div>
+            <div class="input-group">
+              <label>时区选择</label>
+              <select id="timezone-select">
+                <option value="UTC">UTC</option>
+                <option value="Asia/Shanghai" selected>Asia/Shanghai</option>
+              </select>
+            </div>
+            <button class="btn btn-primary" id="convert-time">转换</button>
+            <button class="btn btn-secondary" id="now-time">当前时间</button>
+            <button class="btn btn-secondary" id="copy-time">复制结果</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="base-tool" class="tool-panel">
+        <div class="panel-header">
+          <h2>🔢 进制转换</h2>
+        </div>
+        <div class="panel-body">
+          <div class="base-group">
+            <div class="input-group">
+              <label>输入值</label>
+              <input type="text" id="base-input" placeholder="输入数值" />
+            </div>
+            <div class="input-row">
+              <select id="base-from">
+                <option value="2">二进制</option>
+                <option value="8">八进制</option>
+                <option value="10" selected>十进制</option>
+                <option value="16">十六进制</option>
+              </select>
+              <span>→</span>
+              <select id="base-to">
+                <option value="2">二进制</option>
+                <option value="8">八进制</option>
+                <option value="10">十进制</option>
+                <option value="16" selected>十六进制</option>
+              </select>
+            </div>
+            <div class="input-group">
+              <label>结果</label>
+              <input type="text" id="base-output" readonly placeholder="转换结果" />
+            </div>
+            <button class="btn btn-primary" id="convert-base">转换</button>
+            <button class="btn btn-secondary" id="copy-base">复制结果</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="image-tool" class="tool-panel">
+        <div class="panel-header">
+          <h2>🖼️ 图片工具</h2>
+          <div class="tool-tabs">
+            <button class="tab-btn active" data-tab="image-base64">图片转Base64</button>
+            <button class="tab-btn" data-tab="image-svg">SVG转图片</button>
+            <button class="tab-btn" data-tab="image-screenshot">截屏</button>
+          </div>
+        </div>
+        <div class="panel-body">
+          <div id="image-base64" class="tab-content active">
+            <div class="file-upload">
+              <label class="file-upload-btn" for="image-upload">选择图片</label>
+              <input type="file" id="image-upload" accept="image/*" hidden />
+              <span class="file-name" id="image-file-name">未选择文件</span>
+            </div>
+            <div id="image-preview"></div>
+            <div class="input-group">
+              <label>Base64 结果</label>
+              <textarea id="base64-output" readonly placeholder="Base64结果..."></textarea>
+            </div>
+            <div class="action-bar">
+              <button type="button" class="btn btn-primary" id="copy-base64">复制Base64</button>
+            </div>
+          </div>
+          <div id="image-svg" class="tab-content">
+            <div class="input-group">
+              <label>SVG 代码</label>
+              <textarea id="svg-input" placeholder="输入SVG代码..."></textarea>
+            </div>
+            <div id="svg-preview"></div>
+            <button class="btn btn-primary" id="svg-to-image">转换为PNG</button>
+          </div>
+          <div id="image-screenshot" class="tab-content">
+            <div id="screenshot-preview"></div>
+            <button class="btn btn-primary" id="take-screenshot">截取屏幕</button>
+            <button class="btn btn-secondary" id="save-screenshot">保存截图</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="qrcode-tool" class="tool-panel">
+        <div class="panel-header">
+          <h2>📱 二维码工具</h2>
+          <div class="tool-tabs">
+            <button class="tab-btn active" data-tab="qrcode-generate">生成二维码</button>
+            <button class="tab-btn" data-tab="qrcode-decode">解析二维码</button>
+          </div>
+        </div>
+        <div class="panel-body">
+          <div id="qrcode-generate" class="tab-content active">
+            <div class="input-group">
+              <label>二维码内容</label>
+              <input type="text" id="qrcode-input" placeholder="输入内容" />
+            </div>
+            <div id="qrcode-preview"></div>
+            <div class="action-bar">
+              <button type="button" class="btn btn-primary" id="generate-qrcode">生成</button>
+              <button type="button" class="btn btn-secondary" id="download-qrcode">下载</button>
+            </div>
+          </div>
+          <div id="qrcode-decode" class="tab-content">
+            <div class="file-upload">
+              <label class="file-upload-btn" for="qrcode-upload">选择图片</label>
+              <input type="file" id="qrcode-upload" accept="image/*" hidden />
+              <span class="file-name" id="qrcode-file-name">未选择文件</span>
+            </div>
+            <div id="qrcode-image-preview"></div>
+            <div class="input-group">
+              <label>解析结果</label>
+              <input type="text" id="qrcode-result" readonly placeholder="解析结果" />
+            </div>
+            <div class="action-bar">
+              <button type="button" class="btn btn-primary" id="decode-qrcode">解析</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="mock-tool" class="tool-panel">
+        <div class="panel-header">
+          <h2>📊 Mock工具</h2>
+          <div class="tool-tabs">
+            <button class="tab-btn active" data-tab="mock-generator">Mock数据</button>
+            <button class="tab-btn" data-tab="excel-converter">Excel转JSON</button>
+          </div>
+        </div>
+        <div class="panel-body">
+          <div id="mock-generator" class="tab-content active">
+            <div class="dual-panel">
+              <div class="panel-col">
+                <label class="field-label">Mock 模板</label>
+                <textarea id="mock-schema" placeholder='{"name": "@name", "age": "@age", "email": "@email"}'></textarea>
+              </div>
+              <div class="panel-col">
+                <label class="field-label">Mock 结果</label>
+                <textarea id="mock-output" readonly placeholder="Mock结果..."></textarea>
+              </div>
+            </div>
+            <div class="action-bar">
+              <button type="button" class="btn btn-primary" id="generate-mock">生成Mock</button>
+              <button type="button" class="btn btn-secondary" id="copy-mock">复制结果</button>
+            </div>
+          </div>
+          <div id="excel-converter" class="tab-content">
+            <div class="file-upload">
+              <label class="file-upload-btn" for="excel-upload">选择 Excel</label>
+              <input type="file" id="excel-upload" accept=".xlsx,.xls" hidden />
+              <span class="file-name" id="excel-file-name">未选择文件</span>
+            </div>
+            <div class="input-group">
+              <label>JSON 结果</label>
+              <textarea id="excel-output" readonly placeholder="JSON结果..."></textarea>
+            </div>
+            <div class="action-bar">
+              <button type="button" class="btn btn-primary" id="convert-excel">转换</button>
+              <button type="button" class="btn btn-secondary" id="copy-excel">复制结果</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>

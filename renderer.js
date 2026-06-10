@@ -1,0 +1,30 @@
+const { initSidebar, initKeyboardShortcuts } = require('./js/sidebar');
+const { initColorTool } = require('./js/tools/color');
+const { initJsonTool } = require('./js/tools/json');
+const { initCryptoTool } = require('./js/tools/crypto');
+const { initCodeTool } = require('./js/tools/code');
+const { initHttpTool } = require('./js/tools/http');
+const { initRegexTool } = require('./js/tools/regex');
+const { initTimeTool } = require('./js/tools/time');
+const { initBaseTool } = require('./js/tools/base');
+const { initImageTool } = require('./js/tools/image');
+const { initQrcodeTool } = require('./js/tools/qrcode');
+const { initGeneratorTool } = require('./js/tools/generator');
+const { initMockTool } = require('./js/tools/mock');
+
+document.addEventListener('DOMContentLoaded', () => {
+  initSidebar();
+  initKeyboardShortcuts();
+  initColorTool();
+  initJsonTool();
+  initCryptoTool();
+  initCodeTool();
+  initHttpTool();
+  initRegexTool();
+  initTimeTool();
+  initBaseTool();
+  initImageTool();
+  initQrcodeTool();
+  initGeneratorTool();
+  initMockTool();
+});
