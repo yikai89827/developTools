@@ -614,6 +614,91 @@ textarea.has-result {
   color: #f85149;
 }
 
+.screenshot-tip {
+  margin-bottom: 16px;
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.screenshot-tip kbd {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  font-family: 'SF Mono', 'Cascadia Code', monospace;
+  font-size: 12px;
+  color: var(--accent);
+}
+
+.screenshot-editor {
+  margin-bottom: 16px;
+}
+
+.annotate-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.annotate-btn {
+  padding: 7px 14px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.annotate-btn:hover {
+  border-color: var(--text-muted);
+  color: var(--text-primary);
+}
+
+.annotate-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg-primary);
+}
+
+.annotate-action {
+  background: var(--bg-tertiary);
+}
+
+.screenshot-canvas-wrap {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  border: 1px dashed var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
+  overflow: auto;
+  max-height: 60vh;
+}
+
+#screenshot-canvas {
+  display: block;
+  max-width: 100%;
+  cursor: crosshair;
+}
+
+.screenshot-text-input {
+  position: absolute;
+  min-width: 120px;
+  padding: 4px 8px;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  background: rgba(13, 17, 23, 0.92);
+  color: #ff4d4f;
+  font-size: 14px;
+  outline: none;
+  z-index: 5;
+}
+
 #image-preview,
 #svg-preview,
 #screenshot-preview,
@@ -685,3 +770,11 @@ input[type="color"] {
   }
 
   .dual-panel,
+  .compare-group {
+    grid-template-columns: 1fr;
+  }
+
+  .panel-col textarea {
+    min-height: 180px;
+  }
+}

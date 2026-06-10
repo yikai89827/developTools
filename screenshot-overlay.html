@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>区域截图</title>
+  <link rel="stylesheet" href="screenshot-overlay.css">
+</head>
+<body>
+  <div class="overlay" id="overlay">
+    <div class="selection" id="selection" hidden></div>
+    <div class="toolbar" id="toolbar">
+      <span class="hint" id="hint">拖拽鼠标选择截图区域</span>
+      <span class="size" id="size"></span>
+      <div class="toolbar-actions">
+        <button type="button" id="btn-confirm" disabled>确认截图 Enter</button>
+        <button type="button" id="btn-cancel">取消 Esc</button>
+      </div>
+    </div>
+  </div>
+  <script src="screenshot-overlay.js"></script>
+</body>
+</html>

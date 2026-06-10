@@ -1,7 +1,7 @@
 {
   "name": "dev-tools-app",
   "version": "1.0.0",
-  "description": "离线开发者工具",
+  "description": "离线豆豆开发者工具",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
@@ -29,7 +29,7 @@
   },
   "build": {
     "appId": "com.devtools.app",
-    "productName": "开发者工具",
+    "productName": "豆豆开发者工具",
     "directories": {
       "output": "dist"
     },

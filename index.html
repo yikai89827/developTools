@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>开发者工具</title>
+  <title>豆豆开发者工具</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -11,7 +11,7 @@
     <div class="sidebar">
       <div class="logo">
         <div class="logo-icon">⚡</div>
-        <span>开发者工具</span>
+        <span>豆豆开发者工具</span>
       </div>
       <nav class="tool-list">
         <button class="tool-btn active" data-tool="generator">
@@ -548,9 +548,24 @@
             <button class="btn btn-primary" id="svg-to-image">转换为PNG</button>
           </div>
           <div id="image-screenshot" class="tab-content">
+            <p class="screenshot-tip">快捷键 <kbd>Ctrl+Shift+S</kbd> 区域截图；截图后可框选标注、添加文字，再保存</p>
             <div id="screenshot-preview"></div>
-            <button class="btn btn-primary" id="take-screenshot">截取屏幕</button>
-            <button class="btn btn-secondary" id="save-screenshot">保存截图</button>
+            <div id="screenshot-editor" class="screenshot-editor" hidden>
+              <div class="annotate-toolbar">
+                <button type="button" class="annotate-btn active" data-mode="rect">框选</button>
+                <button type="button" class="annotate-btn" data-mode="text">文字</button>
+                <button type="button" class="annotate-btn annotate-action" id="annotate-undo">撤销</button>
+                <button type="button" class="annotate-btn annotate-action" id="annotate-clear">清空标注</button>
+              </div>
+              <div id="screenshot-canvas-wrap" class="screenshot-canvas-wrap">
+                <canvas id="screenshot-canvas"></canvas>
+              </div>
+            </div>
+            <div class="action-bar">
+              <button type="button" class="btn btn-primary" id="take-screenshot">区域截图</button>
+              <button type="button" class="btn btn-secondary" id="save-screenshot">保存截图</button>
+              <button type="button" class="btn btn-secondary" id="copy-screenshot">复制截图</button>
+            </div>
           </div>
         </div>
       </div>
@@ -606,7 +621,7 @@
             <div class="dual-panel">
               <div class="panel-col">
                 <label class="field-label">Mock 模板</label>
-                <textarea id="mock-schema" placeholder='{"name": "@name", "age": "@age", "email": "@email"}'></textarea>
+                <textarea id="mock-schema" placeholder='{"name": "", "age": "", "address": ""}'></textarea>
               </div>
               <div class="panel-col">
                 <label class="field-label">Mock 结果</label>

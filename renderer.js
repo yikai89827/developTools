@@ -1,4 +1,4 @@
-const { initSidebar, initKeyboardShortcuts } = require('./js/sidebar');
+const { initSidebar } = require('./js/sidebar');
 const { initColorTool } = require('./js/tools/color');
 const { initJsonTool } = require('./js/tools/json');
 const { initCryptoTool } = require('./js/tools/crypto');
@@ -14,7 +14,6 @@ const { initMockTool } = require('./js/tools/mock');
 
 document.addEventListener('DOMContentLoaded', () => {
   initSidebar();
-  initKeyboardShortcuts();
   initColorTool();
   initJsonTool();
   initCryptoTool();
