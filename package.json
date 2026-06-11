@@ -5,7 +5,9 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
+    "prebuild": "node scripts/prebuild.js",
     "build": "electron-builder",
+    "prebuild:win": "node scripts/prebuild.js",
     "build:win": "electron-builder --win"
   },
   "keywords": [
