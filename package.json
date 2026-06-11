@@ -15,7 +15,7 @@
     "tools",
     "electron"
   ],
-  "author": "DevTools",
+  "author": "alex.yi",
   "license": "MIT",
   "devDependencies": {
     "electron": "^28.0.0",
