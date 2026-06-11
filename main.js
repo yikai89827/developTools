@@ -1,10 +1,11 @@
-const { app, BrowserWindow, globalShortcut, ipcMain, Menu, screen, session, desktopCapturer } = require('electron');
+const { app, BrowserWindow, globalShortcut, ipcMain, Menu, screen, session, desktopCapturer, Tray } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { TOOLS, SHORTCUT_MAP, SCREENSHOT_SHORTCUT } = require('./js/tools-config');
 
 let mainWindow;
 let floatWindow;
+let tray = null;
 let captureWindow = null;
 let currentTool = 'generator';
 let isCapturing = false;
@@ -103,6 +104,28 @@ function hideFloatWindow() {
   }
 }
 
+function createTray() {
+  tray = new Tray(path.join(__dirname, 'build/icon.png'));
+  
+  const contextMenu = Menu.buildFromTemplate([
+    { label: '打开主窗口', click: () => restoreMainWindow() },
+    { type: 'separator' },
+    { label: '退出', click: () => app.quit() }
+  ]);
+  
+  tray.setToolTip('豆豆开发者工具');
+  tray.setContextMenu(contextMenu);
+  
+  tray.on('click', () => {
+    if (mainWindow && mainWindow.isVisible()) {
+      mainWindow.hide();
+      showFloatWindow();
+    } else {
+      restoreMainWindow();
+    }
+  });
+}
+
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1200,
@@ -114,13 +137,16 @@ function createWindow() {
       contextIsolation: false,
       enableRemoteModule: true
     },
-    icon: path.join(__dirname, 'build/icon.ico')
+    icon: path.join(__dirname, 'build/icon.png'),
+    skipTaskbar: true
   });
 
   mainWindow.loadFile('index.html');
 
-  mainWindow.on('minimize', () => {
-    if (!isCapturing) showFloatWindow();
+  mainWindow.on('minimize', (event) => {
+    event.preventDefault();
+    mainWindow.hide();
+    showFloatWindow();
   });
 
   mainWindow.on('restore', () => {
@@ -192,6 +218,7 @@ app.whenReady().then(() => {
 
   createWindow();
   createFloatWindow();
+  createTray();
   buildMenu();
   registerGlobalShortcuts();
 });
