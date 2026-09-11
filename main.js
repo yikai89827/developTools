@@ -19,9 +19,10 @@ const COLLAPSED_HEIGHT = 56;
 const EXPANDED_WIDTH = 210;
 const EXPANDED_MAX_HEIGHT = 520;
 
-// 图标资源：优先 .ico（Windows 原生多尺寸），fallback 到 .png
-const ICON_ICO = path.join(__dirname, 'build', 'icon.ico');
-const ICON_PNG = path.join(__dirname, 'build', 'icon.png');
+// 图标资源：统一从 assets/ 加载，开发版和打包版路径一致
+// assets/ 通过 files 配置打包到 asar 内
+const ICON_ICO = path.join(__dirname, 'assets', 'icon.ico');
+const ICON_PNG = path.join(__dirname, 'assets', 'icon.png');
 
 function getAppIcon() {
   // 优先加载 .ico（含 16/32/48/256 多尺寸，Windows 自动选最合适）
@@ -157,30 +158,37 @@ function hideFloatWindow() {
 }
 
 function createTray() {
-  const iconImage = getTrayIconImage();
-  if (!iconImage.isEmpty()) {
-    tray = new Tray(iconImage);
-  } else {
-    tray = new Tray(path.join(__dirname, 'build/icon.png'));
-  }
-
-  const contextMenu = Menu.buildFromTemplate([
-    { label: '打开主窗口', click: () => restoreMainWindow() },
-    { type: 'separator' },
-    { label: '退出', click: () => { isQuiting = true; app.quit(); } }
-  ]);
-
-  tray.setToolTip('豆豆开发者工具');
-  tray.setContextMenu(contextMenu);
-
-  tray.on('click', () => {
-    // 切换显示/隐藏
-    if (isMainWindowActive()) {
-      hideMainWindowToTray();
+  try {
+    const iconImage = getTrayIconImage();
+    if (!iconImage.isEmpty()) {
+      tray = new Tray(iconImage);
+    } else if (fs.existsSync(ICON_PNG)) {
+      tray = new Tray(ICON_PNG);
     } else {
-      restoreMainWindow();
+      console.error('[tray] 图标文件不存在，跳过托盘创建');
+      return;
     }
-  });
+
+    const contextMenu = Menu.buildFromTemplate([
+      { label: '打开主窗口', click: () => restoreMainWindow() },
+      { type: 'separator' },
+      { label: '退出', click: () => { isQuiting = true; app.quit(); } }
+    ]);
+
+    tray.setToolTip('豆豆开发者工具');
+    tray.setContextMenu(contextMenu);
+
+    tray.on('click', () => {
+      // 切换显示/隐藏
+      if (isMainWindowActive()) {
+        hideMainWindowToTray();
+      } else {
+        restoreMainWindow();
+      }
+    });
+  } catch (err) {
+    console.error('[tray] 创建托盘失败:', err.message);
+  }
 }
 
 function createWindow() {
