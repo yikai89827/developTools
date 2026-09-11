@@ -78,10 +78,10 @@ function bringMainWindowToFront() {
   if (!mainWindow.isVisible()) {
     mainWindow.show();
   }
-  // 临时置顶确保在 Windows 任务栏/其他窗口之上获得焦点
-  mainWindow.setAlwaysOnTop(true);
+  // 不用 setAlwaysOnTop 切换，避免 Windows 窗口管理器异常最小化
+  // 直接 focus + showInactive 组合确保激活
+  mainWindow.showInactive();
   mainWindow.focus();
-  mainWindow.setAlwaysOnTop(false);
   hideFloatWindow();
 }
 
@@ -94,7 +94,6 @@ function openTool(tool) {
 
 function handleToolShortcut(tool) {
   if (!mainWindow) return;
-  console.log(`[shortcut] 触发: ${tool}, 当前: ${currentTool}, 活跃: ${isMainWindowActive()}`);
   if (isMainWindowActive() && currentTool === tool) {
     // 已显示且是同一工具 → 隐藏到托盘
     hideMainWindowToTray();
@@ -168,16 +167,16 @@ function createTray() {
   const contextMenu = Menu.buildFromTemplate([
     { label: '打开主窗口', click: () => restoreMainWindow() },
     { type: 'separator' },
-    { label: '退出', click: () => app.quit() }
+    { label: '退出', click: () => { isQuiting = true; app.quit(); } }
   ]);
 
   tray.setToolTip('豆豆开发者工具');
   tray.setContextMenu(contextMenu);
 
   tray.on('click', () => {
-    if (mainWindow && mainWindow.isVisible() && !mainWindow.isMinimized()) {
-      // 主窗口可见时，点击托盘图标最小化到任务栏
-      mainWindow.minimize();
+    // 切换显示/隐藏
+    if (isMainWindowActive()) {
+      hideMainWindowToTray();
     } else {
       restoreMainWindow();
     }
@@ -202,10 +201,18 @@ function createWindow() {
 
   mainWindow.loadFile('index.html');
 
-  mainWindow.on('minimize', () => {
-    // 不再阻止默认最小化行为，让窗口正常显示在任务栏
-    // 同时显示悬浮窗方便快速调用工具
-    showFloatWindow();
+  // 最小化 → 隐藏到托盘，不在任务栏显示
+  mainWindow.on('minimize', (event) => {
+    event.preventDefault();
+    hideMainWindowToTray();
+  });
+
+  // 关闭按钮 → 隐藏到托盘，只有 isQuiting 时才真正关闭
+  mainWindow.on('close', (event) => {
+    if (!isQuiting) {
+      event.preventDefault();
+      hideMainWindowToTray();
+    }
   });
 
   mainWindow.on('restore', () => {
@@ -284,45 +291,37 @@ function registerGlobalShortcuts() {
   globalShortcut.unregisterAll();
 
   let okCount = 0;
-  let failCount = 0;
 
   Object.entries(SHORTCUT_MAP).forEach(([key, toolId]) => {
     const acc = `Ctrl+${key}`;
-    // register 返回 true/false；某些版本也返回 undefined（视为成功）
     let ok;
     try {
       ok = globalShortcut.register(acc, () => handleToolShortcut(toolId));
     } catch (e) {
       ok = false;
-      console.error(`[shortcut] 注册失败 ${acc}:`, e.message);
     }
     if (ok === false) {
-      failCount++;
       failedShortcuts.add(acc);
-      console.warn(`[shortcut] ✗ ${acc} 注册失败（可能被其他程序占用），将在窗口聚焦时使用菜单加速器`);
     } else {
       okCount++;
       failedShortcuts.delete(acc);
     }
   });
 
-  // 截图快捷键
   try {
     const ok = globalShortcut.register(SCREENSHOT_SHORTCUT, () => triggerScreenshot());
-    if (ok === false) {
-      failedShortcuts.add(SCREENSHOT_SHORTCUT);
-      console.warn(`[shortcut] ✗ ${SCREENSHOT_SHORTCUT} 注册失败`);
-    } else {
-      okCount++;
-    }
+    if (ok !== false) okCount++;
+    else failedShortcuts.add(SCREENSHOT_SHORTCUT);
   } catch (e) {
-    console.error(`[shortcut] ${SCREENSHOT_SHORTCUT} 注册异常:`, e.message);
+    failedShortcuts.add(SCREENSHOT_SHORTCUT);
   }
 
-  console.log(`[shortcut] 全局快捷键注册完成：成功 ${okCount} 个，失败 ${failCount + (failedShortcuts.has(SCREENSHOT_SHORTCUT) ? 1 : 0)} 个`);
+  if (okCount > 0) {
+    console.log(`[shortcut] 全局快捷键注册成功 ${okCount} 个`);
+  }
   if (failedShortcuts.size > 0) {
-    console.warn(`[shortcut] 失败列表: ${Array.from(failedShortcuts).join(', ')}`);
-    console.warn('[shortcut] 提示：失败的快捷键可在主窗口聚焦时通过菜单「工具」项触发，或检查是否有输入法/浏览器/QQ 等占用相同组合');
+    console.warn(`[shortcut] 注册失败（可能被其他程序占用）: ${Array.from(failedShortcuts).join(', ')}`);
+    console.warn('[shortcut] 失败的快捷键已挂载到菜单加速器，主窗口聚焦时可用');
   }
 }
 
@@ -345,8 +344,17 @@ app.on('will-quit', () => {
   globalShortcut.unregisterAll();
 });
 
+// macOS 上保持运行；其他平台只有窗口真正关闭（非隐藏到托盘）才退出
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit();
+  if (process.platform === 'darwin') return;
+  // mainWindow 非空说明是 hide() 不是 close，保持运行
+  if (mainWindow !== null) return;
+  app.quit();
+});
+
+// before-quit 确保快捷键在退出前已注销，避免残留
+app.on('before-quit', () => {
+  isQuiting = true;
 });
 
 app.on('activate', () => {
