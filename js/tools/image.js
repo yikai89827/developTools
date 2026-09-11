@@ -1,6 +1,7 @@
 const { ipcRenderer } = require('electron');
 const { copyToClipboard, initTabs } = require('../utils');
 const { ScreenshotEditor } = require('./screenshot-editor');
+const { initWatermarkRemover } = require('./watermark-remover');
 
 let lastScreenshotDataUrl = '';
 let editor = null;
@@ -88,6 +89,7 @@ async function startRegionCapture() {
 
 function initImageTool() {
   initTabs('#image-tool');
+  initWatermarkRemover();
 
   document.getElementById('image-upload').addEventListener('change', (e) => {
     const file = e.target.files[0];

@@ -521,6 +521,7 @@
             <button class="tab-btn active" data-tab="image-base64">图片转Base64</button>
             <button class="tab-btn" data-tab="image-svg">SVG转图片</button>
             <button class="tab-btn" data-tab="image-screenshot">截屏</button>
+            <button class="tab-btn" data-tab="image-watermark">批量去水印</button>
           </div>
         </div>
         <div class="panel-body">
@@ -547,6 +548,62 @@
             <div id="svg-preview"></div>
             <button class="btn btn-primary" id="svg-to-image">转换为PNG</button>
           </div>
+          <div id="image-watermark" class="tab-content">
+            <p class="screenshot-tip">批量去水印：一次最多选择 10 张图片，框选水印区域后批量处理；支持颜色吸取去除半透明文字水印。</p>
+
+            <div class="file-upload">
+              <label class="file-upload-btn" for="watermark-upload">选择图片 (最多10张)</label>
+              <input type="file" id="watermark-upload" accept="image/*" multiple hidden />
+              <span class="file-name" id="watermark-file-name">未选择文件</span>
+            </div>
+
+            <div id="watermark-list" class="watermark-list"></div>
+
+            <div class="watermark-editor" id="watermark-editor" hidden>
+              <div class="watermark-editor-header">
+                <span class="watermark-current-name" id="watermark-current-name"></span>
+                <span class="watermark-counter" id="watermark-counter">0 / 0</span>
+              </div>
+              <div id="watermark-canvas-wrap" class="screenshot-canvas-wrap">
+                <canvas id="watermark-canvas"></canvas>
+              </div>
+              <div class="annotate-toolbar">
+                <button type="button" class="annotate-btn active" data-wm-mode="rect">框选水印</button>
+                <button type="button" class="annotate-btn" data-wm-mode="erase">擦除选区</button>
+                <button type="button" class="annotate-btn annotate-action" id="wm-clear-rects">清空选区</button>
+                <button type="button" class="annotate-btn annotate-action" id="wm-apply-all">应用到所有</button>
+                <button type="button" class="annotate-btn annotate-action" id="wm-prev">上一张</button>
+                <button type="button" class="annotate-btn annotate-action" id="wm-next">下一张</button>
+              </div>
+
+              <div class="input-group wm-color-group">
+                <label class="checkbox-row">
+                  <input type="checkbox" id="wm-color-mode" />
+                  <span>启用颜色吸取（点击图片吸取水印颜色，对半透明文字水印效果更佳）</span>
+                </label>
+                <div class="input-row wm-color-row" id="wm-color-row" style="display:none">
+                  <input type="color" id="wm-color-picker" value="#ffffff" />
+                  <span class="wm-color-label">容差</span>
+                  <input type="range" id="wm-tolerance" min="5" max="100" value="40" />
+                  <span class="wm-tolerance-val" id="wm-tolerance-val">40</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="action-bar">
+              <button type="button" class="btn btn-primary" id="wm-process" disabled>开始去水印</button>
+              <button type="button" class="btn btn-secondary" id="wm-download-all" disabled>下载全部</button>
+              <button type="button" class="btn btn-secondary" id="wm-download-current" disabled>下载当前</button>
+            </div>
+
+            <div class="watermark-progress" id="watermark-progress" hidden>
+              <div class="watermark-progress-bar" id="watermark-progress-bar"></div>
+              <span class="watermark-progress-text" id="watermark-progress-text"></span>
+            </div>
+
+            <div id="watermark-results" class="watermark-results"></div>
+          </div>
+
           <div id="image-screenshot" class="tab-content">
             <p class="screenshot-tip">快捷键 <kbd>Ctrl+Shift+S</kbd> 区域截图；截图后可框选标注、添加文字，再保存</p>
             <div id="screenshot-preview"></div>

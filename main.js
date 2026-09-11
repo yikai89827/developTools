@@ -1,4 +1,4 @@
-const { app, BrowserWindow, globalShortcut, ipcMain, Menu, screen, session, desktopCapturer, Tray } = require('electron');
+const { app, BrowserWindow, globalShortcut, ipcMain, Menu, screen, session, desktopCapturer, Tray, nativeImage } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { TOOLS, SHORTCUT_MAP, SCREENSHOT_SHORTCUT } = require('./js/tools-config');
@@ -11,11 +11,45 @@ let currentTool = 'generator';
 let isCapturing = false;
 let capturePromiseResolve = null;
 let capturePromiseReject = null;
+// 标记是否真正退出，用于区分关闭按钮（最小化到托盘）和托盘退出
+let isQuiting = false;
 
 const COLLAPSED_WIDTH = 52;
 const COLLAPSED_HEIGHT = 56;
 const EXPANDED_WIDTH = 210;
 const EXPANDED_MAX_HEIGHT = 520;
+
+// 图标资源：优先 .ico（Windows 原生多尺寸），fallback 到 .png
+const ICON_ICO = path.join(__dirname, 'build', 'icon.ico');
+const ICON_PNG = path.join(__dirname, 'build', 'icon.png');
+
+function getAppIcon() {
+  // 优先加载 .ico（含 16/32/48/256 多尺寸，Windows 自动选最合适）
+  if (fs.existsSync(ICON_ICO)) {
+    return ICON_ICO;
+  }
+  if (fs.existsSync(ICON_PNG)) {
+    return ICON_PNG;
+  }
+  return undefined;
+}
+
+function getTrayIconImage() {
+  // Tray 在某些 Windows 版本对 asar 内的 PNG 加载不稳定，用 nativeImage 显式处理
+  let img;
+  if (fs.existsSync(ICON_ICO)) {
+    img = nativeImage.createFromPath(ICON_ICO);
+    if (!img.isEmpty()) return img;
+  }
+  if (fs.existsSync(ICON_PNG)) {
+    img = nativeImage.createFromPath(ICON_PNG);
+    if (!img.isEmpty()) {
+      // 256x256 太大，托盘显示会模糊；缩小到 16x16 更清晰
+      return img.resize({ width: 16, height: 16 });
+    }
+  }
+  return nativeImage.createEmpty();
+}
 
 function getFloatBounds(expanded) {
   const display = screen.getPrimaryDisplay();
@@ -35,20 +69,35 @@ function isMainWindowActive() {
   return mainWindow && mainWindow.isVisible() && !mainWindow.isMinimized();
 }
 
+// 从隐藏/最小化状态恢复窗口（解决 hide() 后 show() 不激活的问题）
+function bringMainWindowToFront() {
+  if (!mainWindow) return;
+  if (mainWindow.isMinimized()) {
+    mainWindow.restore();
+  }
+  if (!mainWindow.isVisible()) {
+    mainWindow.show();
+  }
+  // 临时置顶确保在 Windows 任务栏/其他窗口之上获得焦点
+  mainWindow.setAlwaysOnTop(true);
+  mainWindow.focus();
+  mainWindow.setAlwaysOnTop(false);
+  hideFloatWindow();
+}
+
 function openTool(tool) {
   if (!mainWindow) return;
   currentTool = tool;
-  if (mainWindow.isMinimized()) mainWindow.restore();
-  mainWindow.show();
-  mainWindow.focus();
-  hideFloatWindow();
+  bringMainWindowToFront();
   mainWindow.webContents.send('open-tool', tool);
 }
 
 function handleToolShortcut(tool) {
   if (!mainWindow) return;
+  console.log(`[shortcut] 触发: ${tool}, 当前: ${currentTool}, 活跃: ${isMainWindowActive()}`);
   if (isMainWindowActive() && currentTool === tool) {
-    mainWindow.minimize();
+    // 已显示且是同一工具 → 隐藏到托盘
+    hideMainWindowToTray();
     return;
   }
   openTool(tool);
@@ -56,10 +105,14 @@ function handleToolShortcut(tool) {
 
 function restoreMainWindow() {
   if (!mainWindow) return;
-  if (mainWindow.isMinimized()) mainWindow.restore();
-  mainWindow.show();
-  mainWindow.focus();
-  hideFloatWindow();
+  bringMainWindowToFront();
+}
+
+// 最小化/隐藏到托盘
+function hideMainWindowToTray() {
+  if (!mainWindow) return;
+  mainWindow.hide();
+  showFloatWindow();
 }
 
 function createFloatWindow() {
@@ -105,21 +158,26 @@ function hideFloatWindow() {
 }
 
 function createTray() {
-  tray = new Tray(path.join(__dirname, 'build/icon.png'));
-  
+  const iconImage = getTrayIconImage();
+  if (!iconImage.isEmpty()) {
+    tray = new Tray(iconImage);
+  } else {
+    tray = new Tray(path.join(__dirname, 'build/icon.png'));
+  }
+
   const contextMenu = Menu.buildFromTemplate([
     { label: '打开主窗口', click: () => restoreMainWindow() },
     { type: 'separator' },
     { label: '退出', click: () => app.quit() }
   ]);
-  
+
   tray.setToolTip('豆豆开发者工具');
   tray.setContextMenu(contextMenu);
-  
+
   tray.on('click', () => {
-    if (mainWindow && mainWindow.isVisible()) {
-      mainWindow.hide();
-      showFloatWindow();
+    if (mainWindow && mainWindow.isVisible() && !mainWindow.isMinimized()) {
+      // 主窗口可见时，点击托盘图标最小化到任务栏
+      mainWindow.minimize();
     } else {
       restoreMainWindow();
     }
@@ -137,15 +195,16 @@ function createWindow() {
       contextIsolation: false,
       enableRemoteModule: true
     },
-    icon: path.join(__dirname, 'build/icon.png'),
-    skipTaskbar: true
+    icon: getAppIcon(),
+    skipTaskbar: false,
+    show: true
   });
 
   mainWindow.loadFile('index.html');
 
-  mainWindow.on('minimize', (event) => {
-    event.preventDefault();
-    mainWindow.hide();
+  mainWindow.on('minimize', () => {
+    // 不再阻止默认最小化行为，让窗口正常显示在任务栏
+    // 同时显示悬浮窗方便快速调用工具
     showFloatWindow();
   });
 
@@ -169,10 +228,25 @@ function createWindow() {
 }
 
 function buildMenu() {
-  const toolItems = TOOLS.map(tool => ({
-    label: tool.shortcut ? `${tool.label} (${tool.shortcut})` : tool.label,
-    click: () => openTool(tool.id)
-  }));
+  const toolItems = TOOLS.map(tool => {
+    const item = {
+      label: tool.shortcut ? `${tool.label} (${tool.shortcut})` : tool.label,
+      click: () => openTool(tool.id)
+    };
+    // 若全局快捷键注册失败，挂上菜单加速器作为回退（窗口聚焦时可用）
+    if (tool.shortcut && failedShortcuts.has(tool.shortcut)) {
+      item.accelerator = tool.shortcut;
+    }
+    return item;
+  });
+
+  const screenshotItem = {
+    label: `区域截图 (${SCREENSHOT_SHORTCUT})`,
+    click: () => triggerScreenshot()
+  };
+  if (failedShortcuts.has(SCREENSHOT_SHORTCUT)) {
+    screenshotItem.accelerator = SCREENSHOT_SHORTCUT;
+  }
 
   const template = [
     {
@@ -180,7 +254,7 @@ function buildMenu() {
       submenu: [
         ...toolItems,
         { type: 'separator' },
-        { label: `区域截图 (${SCREENSHOT_SHORTCUT})`, click: () => triggerScreenshot() },
+        screenshotItem,
         { type: 'separator' },
         { label: '退出', role: 'quit' }
       ]
@@ -202,11 +276,54 @@ function triggerScreenshot() {
   mainWindow.webContents.send('trigger-screenshot');
 }
 
+// 全局快捷键注册失败的回退表（用于在窗口菜单上提供加速器作为备用）
+const failedShortcuts = new Set();
+
 function registerGlobalShortcuts() {
+  // 先清理之前可能存在的注册（重复启动场景）
+  globalShortcut.unregisterAll();
+
+  let okCount = 0;
+  let failCount = 0;
+
   Object.entries(SHORTCUT_MAP).forEach(([key, toolId]) => {
-    globalShortcut.register(`Ctrl+${key}`, () => handleToolShortcut(toolId));
+    const acc = `Ctrl+${key}`;
+    // register 返回 true/false；某些版本也返回 undefined（视为成功）
+    let ok;
+    try {
+      ok = globalShortcut.register(acc, () => handleToolShortcut(toolId));
+    } catch (e) {
+      ok = false;
+      console.error(`[shortcut] 注册失败 ${acc}:`, e.message);
+    }
+    if (ok === false) {
+      failCount++;
+      failedShortcuts.add(acc);
+      console.warn(`[shortcut] ✗ ${acc} 注册失败（可能被其他程序占用），将在窗口聚焦时使用菜单加速器`);
+    } else {
+      okCount++;
+      failedShortcuts.delete(acc);
+    }
   });
-  globalShortcut.register(SCREENSHOT_SHORTCUT, () => triggerScreenshot());
+
+  // 截图快捷键
+  try {
+    const ok = globalShortcut.register(SCREENSHOT_SHORTCUT, () => triggerScreenshot());
+    if (ok === false) {
+      failedShortcuts.add(SCREENSHOT_SHORTCUT);
+      console.warn(`[shortcut] ✗ ${SCREENSHOT_SHORTCUT} 注册失败`);
+    } else {
+      okCount++;
+    }
+  } catch (e) {
+    console.error(`[shortcut] ${SCREENSHOT_SHORTCUT} 注册异常:`, e.message);
+  }
+
+  console.log(`[shortcut] 全局快捷键注册完成：成功 ${okCount} 个，失败 ${failCount + (failedShortcuts.has(SCREENSHOT_SHORTCUT) ? 1 : 0)} 个`);
+  if (failedShortcuts.size > 0) {
+    console.warn(`[shortcut] 失败列表: ${Array.from(failedShortcuts).join(', ')}`);
+    console.warn('[shortcut] 提示：失败的快捷键可在主窗口聚焦时通过菜单「工具」项触发，或检查是否有输入法/浏览器/QQ 等占用相同组合');
+  }
 }
 
 app.whenReady().then(() => {
@@ -219,8 +336,9 @@ app.whenReady().then(() => {
   createWindow();
   createFloatWindow();
   createTray();
-  buildMenu();
+  // 先注册快捷键（填充 failedShortcuts 表），再构建菜单（消费该表挂载加速器回退）
   registerGlobalShortcuts();
+  buildMenu();
 });
 
 app.on('will-quit', () => {
