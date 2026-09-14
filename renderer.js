@@ -11,6 +11,7 @@ const { initImageTool } = require('./js/tools/image');
 const { initQrcodeTool } = require('./js/tools/qrcode');
 const { initGeneratorTool } = require('./js/tools/generator');
 const { initMockTool } = require('./js/tools/mock');
+const { initClockTool } = require('./js/tools/clock');
 
 document.addEventListener('DOMContentLoaded', () => {
   initSidebar();
@@ -26,4 +27,5 @@ document.addEventListener('DOMContentLoaded', () => {
   initQrcodeTool();
   initGeneratorTool();
   initMockTool();
+  initClockTool();
 });

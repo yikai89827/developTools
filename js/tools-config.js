@@ -10,7 +10,8 @@ const TOOLS = [
   { id: 'base', icon: '🔢', label: '进制转换', shortcut: 'Ctrl+9' },
   { id: 'image', icon: '🖼️', label: '图片工具', shortcut: 'Ctrl+0' },
   { id: 'qrcode', icon: '📱', label: '二维码' },
-  { id: 'mock', icon: '📊', label: 'Mock工具' }
+  { id: 'mock', icon: '📊', label: 'Mock工具' },
+  { id: 'clock', icon: '⏱️', label: '打卡提醒' }
 ];
 
 const SHORTCUT_MAP = {

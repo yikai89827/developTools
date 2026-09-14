@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>打卡提醒</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100%; height: 100%; overflow: hidden;
+      background: rgba(0, 0, 0, 0.92);
+      font-family: -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+      user-select: none; cursor: default;
+    }
+    .reminder-container {
+      width: 100%; height: 100%;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      animation: fadeIn 0.3s ease-out;
+    }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .reminder-icon {
+      font-size: 120px; margin-bottom: 30px;
+      animation: bounce 1.5s ease-in-out infinite;
+    }
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-20px); }
+    }
+    .reminder-title {
+      font-size: 48px; font-weight: 700;
+      color: #fff; margin-bottom: 16px;
+      text-shadow: 0 0 20px rgba(88, 212, 200, 0.5);
+    }
+    .reminder-subtitle {
+      font-size: 24px; color: #8b949e; margin-bottom: 40px;
+    }
+    .reminder-time {
+      font-size: 72px; font-weight: 800;
+      color: #58d4c8; margin-bottom: 40px;
+      font-variant-numeric: tabular-nums;
+      text-shadow: 0 0 30px rgba(88, 212, 200, 0.3);
+    }
+    .reminder-actions {
+      display: flex; gap: 20px;
+    }
+    .reminder-btn {
+      padding: 18px 48px; border: none; border-radius: 12px;
+      font-size: 22px; font-weight: 600; cursor: pointer;
+      transition: all 0.2s; min-width: 200px;
+    }
+    .reminder-btn-primary {
+      background: #58d4c8; color: #0d1117;
+    }
+    .reminder-btn-primary:hover {
+      background: #3dbdb1; transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(88, 212, 200, 0.4);
+    }
+    .reminder-btn-secondary {
+      background: rgba(255, 255, 255, 0.1); color: #e6edf3;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+    .reminder-btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.18);
+    }
+    .reminder-dismiss {
+      margin-top: 30px; font-size: 16px; color: #6e7681;
+    }
+    .reminder-dismiss kbd {
+      background: rgba(255, 255, 255, 0.1); padding: 2px 8px;
+      border-radius: 4px; border: 1px solid rgba(255, 255, 255, 0.15);
+      font-size: 14px;
+    }
+    /* 上班提醒用绿色调 */
+    .clock-on .reminder-time { color: #58d4c8; }
+    /* 下班提醒用橙色调 */
+    .clock-off .reminder-time { color: #f0a868; }
+    .clock-off .reminder-icon { animation: wave 1.5s ease-in-out infinite; }
+    @keyframes wave {
+      0%, 100% { transform: rotate(0deg); }
+      25% { transform: rotate(-10deg); }
+      75% { transform: rotate(10deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="reminder-container" id="reminder-container">
+    <div class="reminder-icon" id="reminder-icon">⏰</div>
+    <div class="reminder-title" id="reminder-title">打卡提醒</div>
+    <div class="reminder-subtitle" id="reminder-subtitle">请记得打卡</div>
+    <div class="reminder-time" id="reminder-time">--:--</div>
+    <div class="reminder-actions">
+      <button class="reminder-btn reminder-btn-primary" id="reminder-confirm">已打卡</button>
+      <button class="reminder-btn reminder-btn-secondary" id="reminder-snooze">稍后提醒（5分钟）</button>
+    </div>
+    <div class="reminder-dismiss">
+      按 <kbd>Esc</kbd> 或 <kbd>Enter</kbd> 关闭提醒
+    </div>
+  </div>
+  <script>
+    const { ipcRenderer } = require('electron');
+
+    const params = new URLSearchParams(location.search);
+    const type = params.get('type') || 'on';
+    const workTime = params.get('time') || '--:--';
+
+    const container = document.getElementById('reminder-container');
+    const iconEl = document.getElementById('reminder-icon');
+    const titleEl = document.getElementById('reminder-title');
+    const subtitleEl = document.getElementById('reminder-subtitle');
+    const timeEl = document.getElementById('reminder-time');
+
+    if (type === 'on') {
+      container.classList.add('clock-on');
+      iconEl.textContent = '⏰';
+      titleEl.textContent = '上班打卡提醒';
+      subtitleEl.textContent = '快到上班时间了，请记得打卡！';
+    } else {
+      container.classList.add('clock-off');
+      iconEl.textContent = '👋';
+      titleEl.textContent = '下班打卡提醒';
+      subtitleEl.textContent = '下班时间到了，请记得打卡后再走！';
+    }
+    timeEl.textContent = workTime;
+
+    // 实时时钟
+    function updateClock() {
+      const now = new Date();
+      const h = String(now.getHours()).padStart(2, '0');
+      const m = String(now.getMinutes()).padStart(2, '0');
+      const s = String(now.getSeconds()).padStart(2, '0');
+      timeEl.textContent = `${h}:${m}:${s}`;
+    }
+    updateClock();
+    setInterval(updateClock, 1000);
+
+    document.getElementById('reminder-confirm').addEventListener('click', () => {
+      ipcRenderer.send('clock-reminder-close');
+    });
+
+    document.getElementById('reminder-snooze').addEventListener('click', () => {
+      ipcRenderer.send('clock-reminder-snooze', type);
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' || e.key === 'Enter') {
+        ipcRenderer.send('clock-reminder-close');
+      }
+    });
+  </script>
+</body>
+</html>

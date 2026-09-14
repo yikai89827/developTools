@@ -14,6 +14,18 @@ let capturePromiseReject = null;
 // 标记是否真正退出，用于区分关闭按钮（最小化到托盘）和托盘退出
 let isQuiting = false;
 
+// ── 打卡提醒 ──
+let clockReminderWindow = null;
+let clockTimer = null;
+let clockConfig = null;
+let clockSnoozeTimer = null;
+let lastReminderKey = ''; // 防止同一提醒点重复触发
+
+const CLOCK_CONFIG_FILE = path.join(
+  (process.env.APPDATA || process.env.HOME || '.'),
+  'dev-tools-clock.json'
+);
+
 const COLLAPSED_WIDTH = 52;
 const COLLAPSED_HEIGHT = 56;
 const EXPANDED_WIDTH = 210;
@@ -135,7 +147,7 @@ function createFloatWindow() {
     }
   });
 
-  floatWindow.setAlwaysOnTop(true, 'floating');
+  floatWindow.setAlwaysOnTop(true, 'screen-saver');
   floatWindow.loadFile('float.html');
 
   floatWindow.on('closed', () => {
@@ -346,6 +358,8 @@ app.whenReady().then(() => {
   // 先注册快捷键（填充 failedShortcuts 表），再构建菜单（消费该表挂载加速器回退）
   registerGlobalShortcuts();
   buildMenu();
+  // 初始化打卡提醒
+  initClockReminder();
 });
 
 app.on('will-quit', () => {
@@ -541,4 +555,214 @@ ipcMain.on('save-file', (event, data) => {
 ipcMain.on('read-file', (event, filePath) => {
   const content = fs.readFileSync(filePath, 'utf-8');
   event.reply('read-file-reply', content);
+});
+
+// ═══════════════════════════════════════════════
+//  打卡提醒功能
+// ═══════════════════════════════════════════════
+
+const DEFAULT_CLOCK_CONFIG = {
+  enabled: true,
+  workdaysOnly: true,
+  onTime: '09:00',
+  offTime: '18:00',
+  onBeforeMinutes: 10,
+  offAfterMinutes: 10
+};
+
+function loadClockConfig() {
+  try {
+    if (fs.existsSync(CLOCK_CONFIG_FILE)) {
+      const raw = fs.readFileSync(CLOCK_CONFIG_FILE, 'utf-8');
+      return { ...DEFAULT_CLOCK_CONFIG, ...JSON.parse(raw) };
+    }
+  } catch (e) {
+    console.error('[clock] 加载配置失败:', e.message);
+  }
+  return { ...DEFAULT_CLOCK_CONFIG };
+}
+
+function saveClockConfig(cfg) {
+  try {
+    fs.writeFileSync(CLOCK_CONFIG_FILE, JSON.stringify(cfg, null, 2));
+  } catch (e) {
+    console.error('[clock] 保存配置失败:', e.message);
+  }
+}
+
+function initClockReminder() {
+  clockConfig = loadClockConfig();
+  startClockTimer();
+}
+
+function startClockTimer() {
+  if (clockTimer) clearInterval(clockTimer);
+  // 每 30 秒检查一次
+  clockTimer = setInterval(checkClockReminder, 30000);
+  // 立即检查一次
+  checkClockReminder();
+}
+
+function checkClockReminder() {
+  if (!clockConfig || !clockConfig.enabled) return;
+  if (clockReminderWindow) return; // 已在提醒中
+
+  const now = new Date();
+  const day = now.getDay(); // 0=周日, 6=周六
+
+  // 仅工作日
+  if (clockConfig.workdaysOnly && (day === 0 || day === 6)) return;
+
+  const hh = String(now.getHours()).padStart(2, '0');
+  const mm = String(now.getMinutes()).padStart(2, '0');
+  const currentHM = `${hh}:${mm}`;
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+  // 计算上班提醒时间
+  const [onH, onM] = clockConfig.onTime.split(':').map(Number);
+  const onTotal = onH * 60 + onM;
+  const onReminderTotal = onTotal - clockConfig.onBeforeMinutes;
+  const onReminderKey = `on_${now.toDateString()}`;
+
+  // 计算下班提醒时间
+  const [offH, offM] = clockConfig.offTime.split(':').map(Number);
+  const offTotal = offH * 60 + offM;
+  const offReminderTotal = offTotal + clockConfig.offAfterMinutes;
+  const offReminderKey = `off_${now.toDateString()}`;
+
+  // 检查上班提醒：在提醒时间点±1分钟内触发
+  if (lastReminderKey !== onReminderKey &&
+      nowMinutes >= onReminderTotal && nowMinutes <= onReminderTotal + 1) {
+    lastReminderKey = onReminderKey;
+    showClockReminder('on', clockConfig.onTime);
+    return;
+  }
+
+  // 检查下班提醒
+  if (lastReminderKey !== offReminderKey &&
+      nowMinutes >= offReminderTotal && nowMinutes <= offReminderTotal + 1) {
+    lastReminderKey = offReminderKey;
+    showClockReminder('off', clockConfig.offTime);
+    return;
+  }
+
+  // 每天零点重置 lastReminderKey
+  if (now.getHours() === 0 && now.getMinutes() < 1) {
+    lastReminderKey = '';
+  }
+}
+
+function showClockReminder(type, workTime) {
+  if (clockReminderWindow) return;
+
+  const display = screen.getPrimaryDisplay();
+  const { width, height } = display.workAreaSize;
+
+  clockReminderWindow = new BrowserWindow({
+    x: 0,
+    y: 0,
+    width,
+    height,
+    frame: false,
+    transparent: true,
+    backgroundColor: '#00000000',
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    resizable: false,
+    movable: false,
+    fullscreenable: false,
+    show: false,
+    hasShadow: false,
+    webPreferences: {
+      nodeIntegration: true,
+      contextIsolation: false
+    }
+  });
+
+  clockReminderWindow.setAlwaysOnTop(true, 'screen-saver');
+
+  clockReminderWindow.loadFile('clock-reminder.html', {
+    query: { type, time: workTime }
+  });
+
+  clockReminderWindow.webContents.on('did-finish-load', () => {
+    clockReminderWindow.show();
+    clockReminderWindow.focus();
+    clockReminderWindow.setFullScreen(true);
+  });
+
+  clockReminderWindow.on('closed', () => {
+    clockReminderWindow = null;
+  });
+}
+
+function closeClockReminder() {
+  if (clockSnoozeTimer) {
+    clearTimeout(clockSnoozeTimer);
+    clockSnoozeTimer = null;
+  }
+  if (clockReminderWindow && !clockReminderWindow.isDestroyed()) {
+    clockReminderWindow.destroy();
+  }
+  clockReminderWindow = null;
+}
+
+function snoozeClockReminder(type) {
+  closeClockReminder();
+  // 5分钟后再次提醒
+  clockSnoozeTimer = setTimeout(() => {
+    const workTime = type === 'on' ? clockConfig.onTime : clockConfig.offTime;
+    showClockReminder(type, workTime);
+  }, 5 * 60 * 1000);
+}
+
+// IPC: 保存打卡配置
+ipcMain.on('clock-save-config', (event, cfg) => {
+  clockConfig = { ...DEFAULT_CLOCK_CONFIG, ...cfg };
+  saveClockConfig(clockConfig);
+  startClockTimer();
+  event.reply('clock-config-saved', true);
+});
+
+// IPC: 读取打卡配置
+ipcMain.handle('clock-get-config', () => {
+  return clockConfig || loadClockConfig();
+});
+
+// IPC: 预览上班/下班提醒
+ipcMain.on('clock-test-reminder', (event, type) => {
+  const workTime = type === 'on' ? clockConfig.onTime : clockConfig.offTime;
+  showClockReminder(type, workTime);
+});
+
+// IPC: 关闭提醒窗口
+ipcMain.on('clock-reminder-close', () => {
+  closeClockReminder();
+});
+
+// IPC: 稍后提醒
+ipcMain.on('clock-reminder-snooze', (event, type) => {
+  snoozeClockReminder(type);
+});
+
+// IPC: 获取下次提醒信息
+ipcMain.handle('clock-get-next-reminder', () => {
+  if (!clockConfig || !clockConfig.enabled) return { next: '未启用', enabled: false };
+  const now = new Date();
+  const day = now.getDay();
+  if (clockConfig.workdaysOnly && (day === 0 || day === 6)) {
+    return { next: '周末不提醒', enabled: true };
+  }
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  const [onH, onM] = clockConfig.onTime.split(':').map(Number);
+  const [offH, offM] = clockConfig.offTime.split(':').map(Number);
+  const onReminderTotal = onH * 60 + onM - clockConfig.onBeforeMinutes;
+  const offReminderTotal = offH * 60 + offM + clockConfig.offAfterMinutes;
+
+  if (nowMinutes < onReminderTotal) {
+    return { next: `上班提醒 ${clockConfig.onTime}（提前${clockConfig.onBeforeMinutes}分钟）`, enabled: true };
+  } else if (nowMinutes < offReminderTotal) {
+    return { next: `下班提醒 ${clockConfig.offTime}（延后${clockConfig.offAfterMinutes}分钟）`, enabled: true };
+  }
+  return { next: '今日提醒已过', enabled: true };
 });

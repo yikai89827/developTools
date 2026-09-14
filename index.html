@@ -72,6 +72,10 @@
           <span class="icon">📊</span>
           <span class="label">Mock工具</span>
         </button>
+        <button class="tool-btn" data-tool="clock">
+          <span class="icon">⏱️</span>
+          <span class="label">打卡提醒</span>
+        </button>
       </nav>
       <div class="sidebar-footer">v1.0.0</div>
     </div>
@@ -703,6 +707,59 @@
             <div class="action-bar">
               <button type="button" class="btn btn-primary" id="convert-excel">转换</button>
               <button type="button" class="btn btn-secondary" id="copy-excel">复制结果</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="clock-tool" class="tool-panel">
+        <div class="panel-header">
+          <h2>⏱️ 打卡提醒</h2>
+        </div>
+        <div class="panel-body">
+          <div class="clock-config">
+            <div class="clock-section">
+              <h3 class="clock-section-title">📋 打卡时间设置</h3>
+              <div class="input-group">
+                <label>上班时间</label>
+                <input type="time" id="clock-on-time" value="09:00" />
+              </div>
+              <div class="input-group">
+                <label>下班时间</label>
+                <input type="time" id="clock-off-time" value="18:00" />
+              </div>
+              <div class="input-group input-narrow">
+                <label>上班前提前提醒（分钟）</label>
+                <input type="number" id="clock-on-before" value="10" min="0" max="120" />
+              </div>
+              <div class="input-group input-narrow">
+                <label>下班后延迟提醒（分钟）</label>
+                <input type="number" id="clock-off-after" value="10" min="0" max="120" />
+              </div>
+              <div class="checkbox-group">
+                <label><input type="checkbox" id="clock-enabled" checked> 启用打卡提醒</label>
+                <label><input type="checkbox" id="clock-workdays-only" checked> 仅工作日（周一至周五）</label>
+              </div>
+              <div class="action-bar">
+                <button type="button" class="btn btn-primary" id="clock-save">保存设置</button>
+                <button type="button" class="btn btn-secondary" id="clock-test-on">预览上班提醒</button>
+                <button type="button" class="btn btn-secondary" id="clock-test-off">预览下班提醒</button>
+              </div>
+            </div>
+            <div class="clock-section clock-status-section">
+              <h3 class="clock-section-title">📊 当前状态</h3>
+              <div class="clock-status-row">
+                <span class="clock-status-label">提醒功能：</span>
+                <span class="clock-status-value" id="clock-status-enabled">已启用</span>
+              </div>
+              <div class="clock-status-row">
+                <span class="clock-status-label">下次提醒：</span>
+                <span class="clock-status-value" id="clock-status-next">--</span>
+              </div>
+              <div class="clock-status-row">
+                <span class="clock-status-label">当前时间：</span>
+                <span class="clock-status-value" id="clock-status-now">--</span>
+              </div>
             </div>
           </div>
         </div>
