@@ -15,7 +15,7 @@ let capturePromiseReject = null;
 let isQuiting = false;
 
 // ── 打卡提醒 ──
-let clockReminderWindow = null;
+let clockReminderWindows = []; // 多屏时每个屏幕一个窗口
 let clockTimer = null;
 let clockConfig = null;
 let clockSnoozeTimer = null;
@@ -605,7 +605,7 @@ function startClockTimer() {
 
 function checkClockReminder() {
   if (!clockConfig || !clockConfig.enabled) return;
-  if (clockReminderWindow) return; // 已在提醒中
+  if (clockReminderWindows.length) return; // 已在提醒中
 
   const now = new Date();
   const day = now.getDay(); // 0=周日, 6=周六
@@ -653,46 +653,58 @@ function checkClockReminder() {
 }
 
 function showClockReminder(type, workTime) {
-  if (clockReminderWindow) return;
+  if (clockReminderWindows.length) return;
 
-  const display = screen.getPrimaryDisplay();
-  const { width, height } = display.workAreaSize;
+  // 多屏办公：为每个显示器创建一个覆盖窗口
+  const displays = screen.getAllDisplays();
+  const primaryId = screen.getPrimaryDisplay().id;
 
-  clockReminderWindow = new BrowserWindow({
-    x: 0,
-    y: 0,
-    width,
-    height,
-    frame: false,
-    transparent: true,
-    backgroundColor: '#00000000',
-    alwaysOnTop: true,
-    skipTaskbar: true,
-    resizable: false,
-    movable: false,
-    fullscreenable: false,
-    show: false,
-    hasShadow: false,
-    webPreferences: {
-      nodeIntegration: true,
-      contextIsolation: false
-    }
-  });
+  displays.forEach((display) => {
+    // display.bounds 是该屏幕在虚拟桌面中的真实坐标矩形
+    const { x, y, width, height } = display.bounds;
 
-  clockReminderWindow.setAlwaysOnTop(true, 'screen-saver');
+    const win = new BrowserWindow({
+      x,
+      y,
+      width,
+      height,
+      frame: false,
+      transparent: true,
+      backgroundColor: '#00000000',
+      alwaysOnTop: true,
+      skipTaskbar: true,
+      resizable: false,
+      movable: false,
+      fullscreenable: false,
+      show: false,
+      hasShadow: false,
+      webPreferences: {
+        nodeIntegration: true,
+        contextIsolation: false
+      }
+    });
 
-  clockReminderWindow.loadFile('clock-reminder.html', {
-    query: { type, time: workTime }
-  });
+    win.setAlwaysOnTop(true, 'screen-saver');
 
-  clockReminderWindow.webContents.on('did-finish-load', () => {
-    clockReminderWindow.show();
-    clockReminderWindow.focus();
-    clockReminderWindow.setFullScreen(true);
-  });
+    win.loadFile('clock-reminder.html', {
+      query: { type, time: workTime }
+    });
 
-  clockReminderWindow.on('closed', () => {
-    clockReminderWindow = null;
+    // 主屏 focus，其他屏 showInactive，避免抢焦点冲突
+    win.webContents.on('did-finish-load', () => {
+      if (display.id === primaryId) {
+        win.show();
+        win.focus();
+      } else {
+        win.showInactive();
+      }
+    });
+
+    win.on('closed', () => {
+      clockReminderWindows = clockReminderWindows.filter(w => w !== win);
+    });
+
+    clockReminderWindows.push(win);
   });
 }
 
@@ -701,10 +713,11 @@ function closeClockReminder() {
     clearTimeout(clockSnoozeTimer);
     clockSnoozeTimer = null;
   }
-  if (clockReminderWindow && !clockReminderWindow.isDestroyed()) {
-    clockReminderWindow.destroy();
-  }
-  clockReminderWindow = null;
+  // 关闭所有屏幕的提醒窗口
+  clockReminderWindows.forEach(w => {
+    if (!w.isDestroyed()) w.destroy();
+  });
+  clockReminderWindows = [];
 }
 
 function snoozeClockReminder(type) {
