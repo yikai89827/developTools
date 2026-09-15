@@ -261,6 +261,8 @@ body {
   flex: 1;
   padding: 24px 28px;
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
 }
 
 .panel-body::-webkit-scrollbar {
@@ -671,13 +673,14 @@ textarea.has-result {
 
 .screenshot-canvas-wrap {
   position: relative;
-  display: inline-block;
-  max-width: 100%;
+  display: block;
+  width: 100%;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   background: var(--bg-primary);
   overflow: auto;
-  max-height: 60vh;
+  flex: 1;
+  min-height: 300px;
   line-height: 0;
 }
 
@@ -734,10 +737,29 @@ textarea.has-result {
 
 .tab-content {
   display: none;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .tab-content.active {
-  display: block;
+  display: flex;
+}
+
+/* 截图 tab 撑满剩余空间 */
+#image-screenshot.active {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+#image-screenshot.active .screenshot-canvas-wrap {
+  flex: 1;
+  min-height: 300px;
+}
+
+#image-screenshot.active .action-bar {
+  flex-shrink: 0;
 }
 
 #http-response {

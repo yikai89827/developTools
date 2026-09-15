@@ -27,7 +27,7 @@ const CLOCK_CONFIG_FILE = path.join(
   'dev-tools-clock.json'
 );
 
-const COLLAPSED_WIDTH = 52;
+const COLLAPSED_WIDTH = 56;
 const COLLAPSED_HEIGHT = 56;
 const EXPANDED_WIDTH = 210;
 const EXPANDED_MAX_HEIGHT = 520;
@@ -65,17 +65,106 @@ function getTrayIconImage() {
   return nativeImage.createEmpty();
 }
 
-function getFloatBounds(expanded) {
+// 悬浮窗尺寸：球态固定 56x56，展开为固定宽度面板
+function getFloatSize(expanded) {
+  if (expanded) {
+    const display = screen.getPrimaryDisplay();
+    const sh = display.workAreaSize.height;
+    return {
+      width: EXPANDED_WIDTH,
+      height: Math.min(EXPANDED_MAX_HEIGHT, sh - 40)
+    };
+  }
+  return { width: COLLAPSED_WIDTH, height: COLLAPSED_HEIGHT };
+}
+
+// 计算贴边后的位置：吸附到最近的屏幕边缘，露出半圆
+function getDockedBounds(x, y, w, h, expanded) {
   const display = screen.getPrimaryDisplay();
   const { width: sw, height: sh } = display.workAreaSize;
   const { x: sx, y: sy } = display.workArea;
-  const w = expanded ? EXPANDED_WIDTH : COLLAPSED_WIDTH;
-  const h = expanded ? Math.min(EXPANDED_MAX_HEIGHT, sh - 40) : COLLAPSED_HEIGHT;
+
+  if (expanded) {
+    // 展开面板：贴右侧
+    return {
+      x: sx + sw - w,
+      y: sy + Math.max(0, Math.min(y - sy, sh - h)),
+      width: w,
+      height: h
+    };
+  }
+
+  // 球态：判断离哪条边最近
+  const half = w / 2;
+  const distLeft = x - sx;
+  const distRight = (sx + sw) - (x + w);
+  const distTop = y - sy;
+  const distBottom = (sy + sh) - (y + h);
+
+  const minDist = Math.min(distLeft, distRight, distTop, distBottom);
+
+  let dockX, dockY;
+  if (minDist === distLeft) {
+    // 贴左：露右半圆
+    dockX = sx - half;
+    dockY = y;
+  } else if (minDist === distRight) {
+    // 贴右：露左半圆
+    dockX = sx + sw - half;
+    dockY = y;
+  } else if (minDist === distTop) {
+    // 贴上：露下半圆
+    dockX = x;
+    dockY = sy - half;
+  } else {
+    // 贴下：露上半圆
+    dockX = x;
+    dockY = sy + sh - half;
+  }
+
+  // 限制在屏幕范围内（避免完全飞出）
+  dockY = Math.max(sy - half, Math.min(dockY, sy + sh - half));
+  dockX = Math.max(sx - half, Math.min(dockX, sx + sw - half));
+
+  return { x: dockX, y: dockY, width: w, height: h };
+}
+
+// 保存/恢复悬浮窗位置
+const FLOAT_POS_FILE = path.join(
+  (process.env.APPDATA || process.env.HOME || '.'),
+  'dev-tools-float-pos.json'
+);
+
+function saveFloatPosition(x, y, edge) {
+  try {
+    fs.writeFileSync(FLOAT_POS_FILE, JSON.stringify({ x, y, edge }, null, 2));
+  } catch (e) {
+    console.error('[float] 保存位置失败:', e.message);
+  }
+}
+
+function loadFloatPosition() {
+  try {
+    if (fs.existsSync(FLOAT_POS_FILE)) {
+      return JSON.parse(fs.readFileSync(FLOAT_POS_FILE, 'utf-8'));
+    }
+  } catch (e) {
+    console.error('[float] 读取位置失败:', e.message);
+  }
+  return null;
+}
+
+function getDefaultFloatBounds() {
+  const display = screen.getPrimaryDisplay();
+  const { width: sw, height: sh } = display.workAreaSize;
+  const { x: sx, y: sy } = display.workArea;
+  // 默认贴右边缘，垂直居中
+  const half = COLLAPSED_WIDTH / 2;
   return {
-    x: sx + sw - w - 4,
-    y: sy + Math.floor((sh - h) / 2),
-    width: w,
-    height: h
+    x: sx + sw - half,
+    y: sy + Math.floor((sh - COLLAPSED_HEIGHT) / 2),
+    width: COLLAPSED_WIDTH,
+    height: COLLAPSED_HEIGHT
   };
 }
 
@@ -131,8 +220,14 @@ function hideMainWindowToTray() {
 function createFloatWindow() {
   if (floatWindow) return;
 
+  // 读取上次位置，没有则用默认（贴右居中）
+  const saved = loadFloatPosition();
+  const initialBounds = saved
+    ? { x: saved.x, y: saved.y, width: COLLAPSED_WIDTH, height: COLLAPSED_HEIGHT }
+    : getDefaultFloatBounds();
+
   floatWindow = new BrowserWindow({
-    ...getFloatBounds(false),
+    ...initialBounds,
     frame: false,
     transparent: true,
     backgroundColor: '#00000000',
@@ -151,6 +246,13 @@ function createFloatWindow() {
   floatWindow.setAlwaysOnTop(true, 'screen-saver');
   floatWindow.loadFile('float.html');
 
+  // 加载完成后通知前端当前是否贴边
+  floatWindow.webContents.on('did-finish-load', () => {
+    if (saved && saved.edge) {
+      floatWindow.webContents.send('float-set-edge', saved.edge);
+    }
+  });
+
   floatWindow.on('closed', () => {
     floatWindow = null;
   });
@@ -159,7 +261,15 @@ function createFloatWindow() {
 function showFloatWindow() {
   if (!floatWindow) createFloatWindow();
   if (!floatWindow) return;
-  floatWindow.setBounds(getFloatBounds(false));
+  // 恢复到球态，保持上次位置
+  const saved = loadFloatPosition();
+  const bounds = saved
+    ? { x: saved.x, y: saved.y, width: COLLAPSED_WIDTH, height: COLLAPSED_HEIGHT }
+    : getDefaultFloatBounds();
+  floatWindow.setBounds(bounds);
+  if (saved && saved.edge) {
+    floatWindow.webContents.send('float-set-edge', saved.edge);
+  }
   floatWindow.webContents.send('float-collapse');
   floatWindow.showInactive();
 }
@@ -402,10 +512,121 @@ ipcMain.on('float-restore-main', () => {
   restoreMainWindow();
 });
 
+// 展开/收起：动态调整窗口尺寸，并保持位置合理
 ipcMain.on('float-set-expanded', (event, expanded) => {
   if (!floatWindow) return;
-  floatWindow.setBounds(getFloatBounds(expanded));
+  const current = floatWindow.getBounds();
+  const size = getFloatSize(expanded);
+  if (expanded) {
+    // 展开为右侧面板：以当前球心为基准，面板靠右
+    const display = screen.getPrimaryDisplay();
+    const { width: sw, height: sh } = display.workAreaSize;
+    const { x: sx, y: sy } = display.workArea;
+    const newY = sy + Math.max(0, Math.min(current.y - sy, sh - size.height));
+    floatWindow.setBounds({
+      x: sx + sw - size.width,
+      y: newY,
+      width: size.width,
+      height: size.height
+    });
+  } else {
+    // 收起为球态：在当前位置贴边
+    const docked = getDockedBounds(current.x, current.y, size.width, size.height, false);
+    floatWindow.setBounds(docked);
+    // 保存位置和边缘
+    const edge = detectEdge(docked.x, docked.y, size.width, size.height);
+    saveFloatPosition(docked.x, docked.y, edge);
+  }
 });
+
+// 拖动状态管理
+let floatDragging = false;
+let floatDragTimer = null;
+let floatDragStartPos = null;
+
+// 拖动开始：记录起点，启动轮询
+ipcMain.on('float-drag-start', () => {
+  if (!floatWindow || floatDragging) return;
+  floatDragging = true;
+  floatDragStartPos = screen.getCursorScreenPoint();
+  const size = getFloatSize(false);
+
+  // Windows 下用 hookWindowMessage 监听全局鼠标释放
+  if (process.platform === 'win32') {
+    try {
+      // WM_LBUTTONUP = 0x0202
+      floatWindow.hookWindowMessage(0x0202, () => {
+        if (floatDragging) {
+          endFloatDrag();
+        }
+      });
+    } catch (e) {
+      // 回退：用轮询检测鼠标停止
+    }
+  }
+
+  // 每 16ms 轮询鼠标位置，更新窗口位置
+  if (floatDragTimer) clearInterval(floatDragTimer);
+  floatDragTimer = setInterval(() => {
+    if (!floatDragging || !floatWindow) return;
+    const cursor = screen.getCursorScreenPoint();
+    const dx = cursor.x - floatDragStartPos.x;
+    const dy = cursor.y - floatDragStartPos.y;
+
+    // 移动超过 4px 才算拖动
+    if (Math.abs(dx) > 4 || Math.abs(dy) > 4) {
+      const newX = cursor.x - size.width / 2;
+      const newY = cursor.y - size.height / 2;
+      floatWindow.setBounds({ x: newX, y: newY, width: size.width, height: size.height });
+      floatWindow.webContents.send('float-dragging');
+    }
+  }, 16);
+});
+
+// 结束拖动：贴边吸附
+function endFloatDrag() {
+  if (!floatDragging) return;
+  floatDragging = false;
+  if (floatDragTimer) {
+    clearInterval(floatDragTimer);
+    floatDragTimer = null;
+  }
+  // 取消 Windows 消息钩子
+  if (process.platform === 'win32' && floatWindow && !floatWindow.isDestroyed()) {
+    try {
+      floatWindow.unhookWindowMessage(0x0202);
+    } catch (e) {}
+  }
+  if (!floatWindow) return;
+  const size = getFloatSize(false);
+  const cursor = screen.getCursorScreenPoint();
+  const realX = cursor.x - size.width / 2;
+  const realY = cursor.y - size.height / 2;
+  const docked = getDockedBounds(realX, realY, size.width, size.height, false);
+  floatWindow.setBounds(docked);
+  const edge = detectEdge(docked.x, docked.y, size.width, size.height);
+  saveFloatPosition(docked.x, docked.y, edge);
+  floatWindow.webContents.send('float-set-edge', edge);
+}
+
+// 拖动结束：前端 mouseup 触发（如果 hookWindowMessage 已处理则忽略重复调用）
+ipcMain.on('float-drag-end', () => {
+  endFloatDrag();
+});
+
+// 判断当前贴边方向
+function detectEdge(x, y, w, h) {
+  const display = screen.getPrimaryDisplay();
+  const { width: sw, height: sh } = display.workAreaSize;
+  const { x: sx, y: sy } = display.workArea;
+  const half = w / 2;
+  // 窗口边缘超出屏幕边缘半圆宽度算作贴边
+  if (x <= sx - half + 2) return 'left';
+  if (x + w >= sx + sw + half - 2) return 'right';
+  if (y <= sy - half + 2) return 'top';
+  if (y + h >= sy + sh + half - 2) return 'bottom';
+  return 'none';
+}
 
 function getScreenSource(sources, display) {
   const displayId = String(display.id);

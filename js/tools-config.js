@@ -27,6 +27,6 @@ const SHORTCUT_MAP = {
   '0': 'image'
 };
 
-const SCREENSHOT_SHORTCUT = 'Ctrl+Shift+Down';
+const SCREENSHOT_SHORTCUT = 'Ctrl+Down';
 
 module.exports = { TOOLS, SHORTCUT_MAP, SCREENSHOT_SHORTCUT };
