@@ -360,6 +360,8 @@ app.whenReady().then(() => {
   buildMenu();
   // 初始化打卡提醒
   initClockReminder();
+  // 开机自启动：读取配置，若用户已启用则写入系统注册表
+  syncAutoLaunch();
 });
 
 app.on('will-quit', () => {
@@ -778,4 +780,65 @@ ipcMain.handle('clock-get-next-reminder', () => {
     return { next: `下班提醒 ${clockConfig.offTime}（延后${clockConfig.offAfterMinutes}分钟）`, enabled: true };
   }
   return { next: '今日提醒已过', enabled: true };
+});
+
+// ═══════════════════════════════════════════════
+//  开机自启动
+// ═══════════════════════════════════════════════
+
+// 从打卡配置文件读取 autoLaunch 字段；不存在时默认 false
+function isAutoLaunchEnabled() {
+  try {
+    if (fs.existsSync(CLOCK_CONFIG_FILE)) {
+      const raw = JSON.parse(fs.readFileSync(CLOCK_CONFIG_FILE, 'utf-8'));
+      return !!raw.autoLaunch;
+    }
+  } catch (e) {
+    console.error('[autoLaunch] 读取失败:', e.message);
+  }
+  return false;
+}
+
+// 将 autoLaunch 状态同步到系统（Windows 注册表 / macOS LaunchAgent）
+function syncAutoLaunch() {
+  const enabled = isAutoLaunchEnabled();
+  try {
+    app.setLoginItemSettings({
+      openAtLogin: enabled,
+      // 打包后的可执行名称；开发模式下 path 为 electron.exe，
+      // setLoginItemSettings 会自动处理 dev/prod 差异
+      args: ['--auto-launch']
+    });
+    console.log('[autoLaunch] 同步完成，开机启动:', enabled);
+  } catch (e) {
+    console.error('[autoLaunch] 设置失败:', e.message);
+  }
+}
+
+// IPC: 查询开机自启动状态
+ipcMain.handle('auto-launch-get', () => {
+  return { enabled: isAutoLaunchEnabled() };
+});
+
+// IPC: 开关开机自启动
+ipcMain.handle('auto-launch-set', (event, enabled) => {
+  try {
+    // 先更新配置文件
+    let cfg = {};
+    if (fs.existsSync(CLOCK_CONFIG_FILE)) {
+      cfg = JSON.parse(fs.readFileSync(CLOCK_CONFIG_FILE, 'utf-8'));
+    }
+    cfg.autoLaunch = !!enabled;
+    fs.writeFileSync(CLOCK_CONFIG_FILE, JSON.stringify(cfg, null, 2));
+
+    // 再同步到系统
+    app.setLoginItemSettings({
+      openAtLogin: !!enabled,
+      args: ['--auto-launch']
+    });
+    return { ok: true, enabled: !!enabled };
+  } catch (e) {
+    console.error('[autoLaunch] 设置失败:', e.message);
+    return { ok: false, error: e.message };
+  }
 });

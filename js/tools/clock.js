@@ -78,12 +78,29 @@ function bindEvents() {
   ['clock-enabled', 'clock-workdays-only', 'clock-on-time', 'clock-off-time', 'clock-on-before', 'clock-off-after'].forEach((id) => {
     getEl(id).addEventListener('change', updateStatus);
   });
+
+  // 开机自启动开关：立即生效，不需要点保存
+  getEl('auto-launch-enabled').addEventListener('change', async (e) => {
+    const enabled = e.target.checked;
+    const res = await ipcRenderer.invoke('auto-launch-set', enabled);
+    if (!res.ok) {
+      e.target.checked = !enabled; // 回滚
+      alert('设置开机启动失败：' + (res.error || '未知错误'));
+    }
+  });
 }
 
 function initClockTool() {
   // 加载已保存的配置
-  ipcRenderer.invoke('clock-get-config').then((cfg) => {
+  ipcRenderer.invoke('clock-get-config').then(async (cfg) => {
     if (cfg) fillForm(cfg);
+    // 加载开机自启动状态
+    try {
+      const al = await ipcRenderer.invoke('auto-launch-get');
+      getEl('auto-launch-enabled').checked = !!al.enabled;
+    } catch (e) {
+      console.error('[clock] 读取自启动状态失败:', e);
+    }
     bindEvents();
     updateStatus();
     // 每 5 秒刷新一次当前时间与下次提醒
