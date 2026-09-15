@@ -1,6 +1,7 @@
 const { app, BrowserWindow, globalShortcut, ipcMain, Menu, screen, session, desktopCapturer, Tray, nativeImage } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const { execSync } = require('child_process');
 const { TOOLS, SHORTCUT_MAP, SCREENSHOT_SHORTCUT } = require('./js/tools-config');
 
 let mainWindow;
@@ -786,7 +787,54 @@ ipcMain.handle('clock-get-next-reminder', () => {
 //  开机自启动
 // ═══════════════════════════════════════════════
 
-// 从打卡配置文件读取 autoLaunch 字段；不存在时默认 false
+// 注册表项名（固定 ASCII，避免中文键名在某些机器上的编码问题）
+const AUTO_LAUNCH_REG_KEY = 'DevToolsAutoLaunch';
+const RUN_KEY = 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run';
+
+// 构建启动命令行：打包后用 app.getPath('exe')，开发模式用 electron.exe + 应用目录
+function buildLaunchCommand() {
+  if (app.isPackaged) {
+    return `"${process.execPath}"`;
+  }
+  // 开发模式：electron.exe + 应用根目录
+  const electronExe = process.execPath; // electron 启动后这是 electron.exe
+  const appRoot = app.getAppPath();    // 应用根目录
+  return `"${electronExe}" "${appRoot}"`;
+}
+
+// 查询注册表是否已写入该项
+function readRegRunValue() {
+  try {
+    const out = execSync(
+      `reg query "${RUN_KEY}" /v "${AUTO_LAUNCH_REG_KEY}"`,
+      { windowsHide: true }
+    ).toString();
+    return out.includes(AUTO_LAUNCH_REG_KEY);
+  } catch (e) {
+    return false; // 项不存在 → reg query 返回非零
+  }
+}
+
+// 写入 / 删除注册表自启动项
+function writeRegAutoLaunch(enable) {
+  if (enable) {
+    const cmd = buildLaunchCommand();
+    // reg add 的 /d 参数：整体用 " 包裹，内部引号用 \" 转义
+    // 这样注册表值会保留 "path1" "path2" 格式，含空格的路径也能正确启动
+    const escaped = cmd.replace(/"/g, '\\"');
+    execSync(
+      `reg add "${RUN_KEY}" /v "${AUTO_LAUNCH_REG_KEY}" /t REG_SZ /d "${escaped}" /f`,
+      { windowsHide: true }
+    );
+  } else {
+    execSync(
+      `reg delete "${RUN_KEY}" /v "${AUTO_LAUNCH_REG_KEY}" /f`,
+      { windowsHide: true }
+    );
+  }
+}
+
+// 从配置文件读取 autoLaunch 字段
 function isAutoLaunchEnabled() {
   try {
     if (fs.existsSync(CLOCK_CONFIG_FILE)) {
@@ -794,30 +842,31 @@ function isAutoLaunchEnabled() {
       return !!raw.autoLaunch;
     }
   } catch (e) {
-    console.error('[autoLaunch] 读取失败:', e.message);
+    console.error('[autoLaunch] 读取配置失败:', e.message);
   }
   return false;
 }
 
-// 将 autoLaunch 状态同步到系统（Windows 注册表 / macOS LaunchAgent）
+// 启动时同步：配置文件状态 → 注册表
 function syncAutoLaunch() {
   const enabled = isAutoLaunchEnabled();
   try {
-    app.setLoginItemSettings({
-      openAtLogin: enabled,
-      // 打包后的可执行名称；开发模式下 path 为 electron.exe，
-      // setLoginItemSettings 会自动处理 dev/prod 差异
-      args: ['--auto-launch']
-    });
-    console.log('[autoLaunch] 同步完成，开机启动:', enabled);
+    // 以配置文件为准，避免配置文件说开但注册表丢失，或反之
+    const regExists = readRegRunValue();
+    if (enabled && !regExists) {
+      writeRegAutoLaunch(true);
+    } else if (!enabled && regExists) {
+      writeRegAutoLaunch(false);
+    }
+    console.log('[autoLaunch] 同步完成，开机启动:', enabled, '注册表已存在:', readRegRunValue());
   } catch (e) {
-    console.error('[autoLaunch] 设置失败:', e.message);
+    console.error('[autoLaunch] 同步失败:', e.message);
   }
 }
 
-// IPC: 查询开机自启动状态
+// IPC: 查询开机自启动状态（以注册表实际状态为准）
 ipcMain.handle('auto-launch-get', () => {
-  return { enabled: isAutoLaunchEnabled() };
+  return { enabled: readRegRunValue() };
 });
 
 // IPC: 开关开机自启动
@@ -831,12 +880,12 @@ ipcMain.handle('auto-launch-set', (event, enabled) => {
     cfg.autoLaunch = !!enabled;
     fs.writeFileSync(CLOCK_CONFIG_FILE, JSON.stringify(cfg, null, 2));
 
-    // 再同步到系统
-    app.setLoginItemSettings({
-      openAtLogin: !!enabled,
-      args: ['--auto-launch']
-    });
-    return { ok: true, enabled: !!enabled };
+    // 再写入注册表
+    writeRegAutoLaunch(!!enabled);
+
+    // 验证写入结果
+    const actual = readRegRunValue();
+    return { ok: true, enabled: actual };
   } catch (e) {
     console.error('[autoLaunch] 设置失败:', e.message);
     return { ok: false, error: e.message };
