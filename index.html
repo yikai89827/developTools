@@ -526,6 +526,7 @@
             <button class="tab-btn" data-tab="image-svg">SVG转图片</button>
             <button class="tab-btn" data-tab="image-screenshot">截屏</button>
             <button class="tab-btn" data-tab="image-watermark">批量去水印</button>
+            <button class="tab-btn" data-tab="image-resize">尺寸/压缩</button>
           </div>
         </div>
         <div class="panel-body">
@@ -626,6 +627,90 @@
               <button type="button" class="btn btn-primary" id="take-screenshot">区域截图</button>
               <button type="button" class="btn btn-secondary" id="save-screenshot">保存截图</button>
               <button type="button" class="btn btn-secondary" id="copy-screenshot">复制截图</button>
+            </div>
+          </div>
+
+          <div id="image-resize" class="tab-content">
+            <p class="screenshot-tip">图片尺寸修改与压缩：支持像素级调整宽高、保持/不保持宽高比、质量压缩。</p>
+
+            <div class="file-upload">
+              <label class="file-upload-btn" for="resize-upload">选择图片</label>
+              <input type="file" id="resize-upload" accept="image/*" hidden />
+              <span class="file-name" id="resize-file-name">未选择文件</span>
+            </div>
+
+            <div id="resize-workspace" class="resize-workspace" hidden>
+              <div class="resize-layout">
+                <div class="resize-preview-col">
+                  <div class="resize-preview-box">
+                    <div class="resize-preview-label">原图预览</div>
+                    <div id="resize-original-preview" class="resize-preview-img"></div>
+                    <div class="resize-info" id="resize-original-info"></div>
+                  </div>
+                  <div class="resize-preview-box">
+                    <div class="resize-preview-label">结果预览</div>
+                    <div id="resize-result-preview" class="resize-preview-img"></div>
+                    <div class="resize-info" id="resize-result-info"></div>
+                  </div>
+                </div>
+
+                <div class="resize-controls-col">
+                  <div class="resize-section">
+                    <h4>尺寸修改</h4>
+                    <div class="resize-dim-row">
+                      <label class="resize-dim-item">
+                        <span>宽度</span>
+                        <input type="number" id="resize-width" min="1" max="10000" />
+                        <span class="resize-unit">px</span>
+                      </label>
+                      <div class="resize-link-wrap">
+                        <button type="button" class="resize-link-btn active" id="resize-link" title="保持宽高比">🔗</button>
+                      </div>
+                      <label class="resize-dim-item">
+                        <span>高度</span>
+                        <input type="number" id="resize-height" min="1" max="10000" />
+                        <span class="resize-unit">px</span>
+                      </label>
+                    </div>
+                    <div class="resize-presets">
+                      <button type="button" class="resize-preset-btn" data-scale="50">50%</button>
+                      <button type="button" class="resize-preset-btn" data-scale="75">75%</button>
+                      <button type="button" class="resize-preset-btn" data-scale="150">150%</button>
+                      <button type="button" class="resize-preset-btn" data-scale="200">200%</button>
+                      <button type="button" class="resize-preset-btn" data-reset="1">原图尺寸</button>
+                    </div>
+                  </div>
+
+                  <div class="resize-section">
+                    <h4>质量压缩</h4>
+                    <label class="checkbox-row">
+                      <input type="checkbox" id="resize-compress-enable" checked />
+                      <span>启用质量压缩（仅 JPEG/WebP 有效）</span>
+                    </label>
+                    <div class="resize-quality-row">
+                      <span class="resize-quality-label">质量</span>
+                      <input type="range" id="resize-quality" min="10" max="100" value="80" />
+                      <span class="resize-quality-val" id="resize-quality-val">80</span>
+                    </div>
+                    <div class="resize-format-row">
+                      <label>输出格式</label>
+                      <select id="resize-format">
+                        <option value="auto">自动（跟随原图）</option>
+                        <option value="jpeg">JPEG</option>
+                        <option value="png">PNG</option>
+                        <option value="webp">WebP</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div class="resize-summary" id="resize-summary"></div>
+
+                  <div class="action-bar">
+                    <button type="button" class="btn btn-primary" id="resize-apply">应用修改</button>
+                    <button type="button" class="btn btn-secondary" id="resize-download" disabled>下载图片</button>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
