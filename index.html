@@ -631,85 +631,180 @@
           </div>
 
           <div id="image-resize" class="tab-content">
-            <p class="screenshot-tip">图片尺寸修改与压缩：支持像素级调整宽高、保持/不保持宽高比、质量压缩。</p>
+            <p class="screenshot-tip">图片尺寸修改与压缩：支持像素级调整宽高、保持/不保持宽高比、质量压缩。单张模式可直接下载；批量模式自动输出到指定目录。</p>
 
-            <div class="file-upload">
-              <label class="file-upload-btn" for="resize-upload">选择图片</label>
-              <input type="file" id="resize-upload" accept="image/*" hidden />
-              <span class="file-name" id="resize-file-name">未选择文件</span>
+            <!-- 模式切换 -->
+            <div class="resize-mode-bar">
+              <button type="button" class="resize-mode-btn active" data-mode="single">单张模式</button>
+              <button type="button" class="resize-mode-btn" data-mode="batch">批量模式</button>
             </div>
 
-            <div id="resize-workspace" class="resize-workspace" hidden>
-              <div class="resize-layout">
-                <div class="resize-preview-col">
-                  <div class="resize-preview-box">
-                    <div class="resize-preview-label">原图预览</div>
-                    <div id="resize-original-preview" class="resize-preview-img"></div>
-                    <div class="resize-info" id="resize-original-info"></div>
-                  </div>
-                  <div class="resize-preview-box">
-                    <div class="resize-preview-label">结果预览</div>
-                    <div id="resize-result-preview" class="resize-preview-img"></div>
-                    <div class="resize-info" id="resize-result-info"></div>
-                  </div>
-                </div>
+            <!-- 单张模式 -->
+            <div id="resize-single-panel">
+              <div class="file-upload">
+                <label class="file-upload-btn" for="resize-upload">选择图片</label>
+                <input type="file" id="resize-upload" accept="image/*" hidden />
+                <span class="file-name" id="resize-file-name">未选择文件</span>
+              </div>
 
-                <div class="resize-controls-col">
-                  <div class="resize-section">
-                    <h4>尺寸修改</h4>
-                    <div class="resize-dim-row">
-                      <label class="resize-dim-item">
-                        <span>宽度</span>
-                        <input type="number" id="resize-width" min="1" max="10000" />
-                        <span class="resize-unit">px</span>
-                      </label>
-                      <div class="resize-link-wrap">
-                        <button type="button" class="resize-link-btn active" id="resize-link" title="保持宽高比">🔗</button>
+              <div id="resize-workspace" class="resize-workspace" hidden>
+                <div class="resize-layout">
+                  <div class="resize-preview-col">
+                    <div class="resize-preview-box">
+                      <div class="resize-preview-label">原图预览</div>
+                      <div id="resize-original-preview" class="resize-preview-img"></div>
+                      <div class="resize-info" id="resize-original-info"></div>
+                    </div>
+                    <div class="resize-preview-box">
+                      <div class="resize-preview-label">结果预览</div>
+                      <div id="resize-result-preview" class="resize-preview-img"></div>
+                      <div class="resize-info" id="resize-result-info"></div>
+                    </div>
+                  </div>
+
+                  <div class="resize-controls-col">
+                    <div class="resize-section">
+                      <h4>尺寸修改</h4>
+                      <div class="resize-dim-row">
+                        <label class="resize-dim-item">
+                          <span>宽度</span>
+                          <input type="number" id="resize-width" min="1" max="10000" />
+                          <span class="resize-unit">px</span>
+                        </label>
+                        <div class="resize-link-wrap">
+                          <button type="button" class="resize-link-btn active" id="resize-link" title="保持宽高比">🔗</button>
+                        </div>
+                        <label class="resize-dim-item">
+                          <span>高度</span>
+                          <input type="number" id="resize-height" min="1" max="10000" />
+                          <span class="resize-unit">px</span>
+                        </label>
                       </div>
-                      <label class="resize-dim-item">
-                        <span>高度</span>
-                        <input type="number" id="resize-height" min="1" max="10000" />
-                        <span class="resize-unit">px</span>
+                      <div class="resize-presets">
+                        <button type="button" class="resize-preset-btn" data-scale="50">50%</button>
+                        <button type="button" class="resize-preset-btn" data-scale="75">75%</button>
+                        <button type="button" class="resize-preset-btn" data-scale="150">150%</button>
+                        <button type="button" class="resize-preset-btn" data-scale="200">200%</button>
+                        <button type="button" class="resize-preset-btn" data-reset="1">原图尺寸</button>
+                      </div>
+                    </div>
+
+                    <div class="resize-section">
+                      <h4>质量压缩</h4>
+                      <label class="checkbox-row">
+                        <input type="checkbox" id="resize-compress-enable" checked />
+                        <span>启用质量压缩（仅 JPEG/WebP 有效）</span>
                       </label>
+                      <div class="resize-quality-row">
+                        <span class="resize-quality-label">质量</span>
+                        <input type="range" id="resize-quality" min="10" max="100" value="80" />
+                        <span class="resize-quality-val" id="resize-quality-val">80</span>
+                      </div>
+                      <div class="resize-format-row">
+                        <label>输出格式</label>
+                        <select id="resize-format">
+                          <option value="auto">自动（跟随原图）</option>
+                          <option value="jpeg">JPEG</option>
+                          <option value="png">PNG</option>
+                          <option value="webp">WebP</option>
+                        </select>
+                      </div>
                     </div>
-                    <div class="resize-presets">
-                      <button type="button" class="resize-preset-btn" data-scale="50">50%</button>
-                      <button type="button" class="resize-preset-btn" data-scale="75">75%</button>
-                      <button type="button" class="resize-preset-btn" data-scale="150">150%</button>
-                      <button type="button" class="resize-preset-btn" data-scale="200">200%</button>
-                      <button type="button" class="resize-preset-btn" data-reset="1">原图尺寸</button>
-                    </div>
-                  </div>
 
-                  <div class="resize-section">
-                    <h4>质量压缩</h4>
-                    <label class="checkbox-row">
-                      <input type="checkbox" id="resize-compress-enable" checked />
-                      <span>启用质量压缩（仅 JPEG/WebP 有效）</span>
-                    </label>
-                    <div class="resize-quality-row">
-                      <span class="resize-quality-label">质量</span>
-                      <input type="range" id="resize-quality" min="10" max="100" value="80" />
-                      <span class="resize-quality-val" id="resize-quality-val">80</span>
-                    </div>
-                    <div class="resize-format-row">
-                      <label>输出格式</label>
-                      <select id="resize-format">
-                        <option value="auto">自动（跟随原图）</option>
-                        <option value="jpeg">JPEG</option>
-                        <option value="png">PNG</option>
-                        <option value="webp">WebP</option>
-                      </select>
-                    </div>
-                  </div>
+                    <div class="resize-summary" id="resize-summary"></div>
 
-                  <div class="resize-summary" id="resize-summary"></div>
-
-                  <div class="action-bar">
-                    <button type="button" class="btn btn-primary" id="resize-apply">应用修改</button>
-                    <button type="button" class="btn btn-secondary" id="resize-download" disabled>下载图片</button>
+                    <div class="action-bar">
+                      <button type="button" class="btn btn-primary" id="resize-apply">应用修改</button>
+                      <button type="button" class="btn btn-secondary" id="resize-download" disabled>下载图片</button>
+                    </div>
                   </div>
                 </div>
+              </div>
+            </div>
+
+            <!-- 批量模式 -->
+            <div id="resize-batch-panel" hidden>
+              <!-- 输出目录配置 -->
+              <div class="resize-output-dir">
+                <span class="resize-output-dir-label">输出目录：</span>
+                <span class="resize-output-dir-path" id="resize-output-path">加载中...</span>
+                <button type="button" class="btn btn-secondary btn-sm" id="resize-select-dir">修改目录</button>
+                <button type="button" class="btn btn-secondary btn-sm" id="resize-open-dir">打开文件夹</button>
+              </div>
+
+              <!-- 多文件上传 -->
+              <div class="file-upload">
+                <label class="file-upload-btn" for="resize-batch-upload">选择多张图片</label>
+                <input type="file" id="resize-batch-upload" accept="image/*" multiple hidden />
+                <span class="file-name" id="resize-batch-file-name">未选择文件</span>
+              </div>
+
+              <!-- 文件列表 -->
+              <div class="resize-batch-list" id="resize-batch-list">
+                <div class="resize-batch-empty">请选择要处理的图片</div>
+              </div>
+
+              <!-- 批量设置 -->
+              <div class="resize-batch-controls">
+                <div class="resize-section">
+                  <h4>尺寸修改（批量）</h4>
+                  <div class="resize-dim-row">
+                    <label class="resize-dim-item">
+                      <span>宽度</span>
+                      <input type="number" id="resize-batch-width" min="1" max="10000" />
+                      <span class="resize-unit">px</span>
+                    </label>
+                    <div class="resize-link-wrap">
+                      <button type="button" class="resize-link-btn active" id="resize-batch-link" title="保持宽高比">🔗</button>
+                    </div>
+                    <label class="resize-dim-item">
+                      <span>高度</span>
+                      <input type="number" id="resize-batch-height" min="1" max="10000" />
+                      <span class="resize-unit">px</span>
+                    </label>
+                  </div>
+                  <div class="resize-presets">
+                    <button type="button" class="resize-preset-btn" data-scale="50">50%</button>
+                    <button type="button" class="resize-preset-btn" data-scale="75">75%</button>
+                    <button type="button" class="resize-preset-btn" data-scale="150">150%</button>
+                    <button type="button" class="resize-preset-btn" data-scale="200">200%</button>
+                    <button type="button" class="resize-preset-btn" data-reset="1">原图尺寸</button>
+                  </div>
+                </div>
+
+                <div class="resize-section">
+                  <h4>质量压缩（批量）</h4>
+                  <label class="checkbox-row">
+                    <input type="checkbox" id="resize-batch-compress-enable" checked />
+                    <span>启用质量压缩（仅 JPEG/WebP 有效）</span>
+                  </label>
+                  <div class="resize-quality-row">
+                    <span class="resize-quality-label">质量</span>
+                    <input type="range" id="resize-batch-quality" min="10" max="100" value="80" />
+                    <span class="resize-quality-val" id="resize-batch-quality-val">80</span>
+                  </div>
+                  <div class="resize-format-row">
+                    <label>输出格式</label>
+                    <select id="resize-batch-format">
+                      <option value="auto">自动（跟随原图）</option>
+                      <option value="jpeg">JPEG</option>
+                      <option value="png">PNG</option>
+                      <option value="webp">WebP</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 进度条 -->
+              <div class="resize-batch-progress" id="resize-batch-progress" hidden>
+                <div class="resize-batch-progress-bar" id="resize-batch-progress-bar"></div>
+                <span class="resize-batch-progress-text" id="resize-batch-progress-text"></span>
+              </div>
+
+              <!-- 批量操作按钮 -->
+              <div class="action-bar">
+                <button type="button" class="btn btn-primary" id="resize-batch-process" disabled>开始批量处理</button>
+                <button type="button" class="btn btn-secondary" id="resize-batch-clear">清空列表</button>
               </div>
             </div>
           </div>

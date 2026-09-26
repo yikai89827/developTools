@@ -1307,6 +1307,175 @@ input[type="color"] {
   }
 }
 
+/* ── Image Resizer Batch Mode ── */
+
+.resize-mode-bar {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.resize-mode-btn {
+  padding: 8px 16px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.15s;
+}
+
+.resize-mode-btn.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+.resize-output-dir {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-secondary);
+  margin-bottom: 16px;
+  font-size: 13px;
+  flex-wrap: wrap;
+}
+
+.resize-output-dir-label {
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.resize-output-dir-path {
+  color: var(--text-primary);
+  font-family: monospace;
+  word-break: break-all;
+  flex: 1;
+  min-width: 0;
+}
+
+.btn-sm {
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
+.resize-batch-list {
+  max-height: 260px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-secondary);
+  margin-bottom: 16px;
+  padding: 8px;
+}
+
+.resize-batch-empty {
+  padding: 30px;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.resize-batch-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.resize-batch-item:last-child {
+  border-bottom: none;
+}
+
+.resize-batch-thumb {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-tertiary);
+}
+
+.resize-batch-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.resize-batch-name {
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 2px;
+}
+
+.resize-batch-size {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.resize-batch-status {
+  white-space: nowrap;
+  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+}
+
+.resize-batch-status.processing { color: #f59e0b; }
+.resize-batch-status.done { color: #22c55e; }
+.resize-batch-status.error { color: #ef4444; }
+
+.resize-batch-controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+@media (max-width: 900px) {
+  .resize-batch-controls {
+    grid-template-columns: 1fr;
+  }
+}
+
+.resize-batch-progress {
+  height: 24px;
+  border-radius: 6px;
+  background: var(--bg-tertiary);
+  margin-bottom: 16px;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.resize-batch-progress-bar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  background: var(--accent);
+  width: 0%;
+  transition: width 0.2s;
+}
+
+.resize-batch-progress-text {
+  position: relative;
+  z-index: 1;
+  font-size: 12px;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+
 /* ── Clock Reminder Tool ── */
 .clock-config {
   max-width: 640px;

@@ -1,4 +1,4 @@
-const { app, BrowserWindow, globalShortcut, ipcMain, Menu, screen, session, desktopCapturer, Tray, nativeImage } = require('electron');
+const { app, BrowserWindow, globalShortcut, ipcMain, Menu, screen, session, desktopCapturer, Tray, nativeImage, shell, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { execSync } = require('child_process');
@@ -779,6 +779,41 @@ ipcMain.on('save-file', (event, data) => {
 ipcMain.on('read-file', (event, filePath) => {
   const content = fs.readFileSync(filePath, 'utf-8');
   event.reply('read-file-reply', content);
+});
+
+// ═══════════════════════════════════════════════
+//  图片批量尺寸修改
+// ═══════════════════════════════════════════════
+
+// 默认输出目录：跟随应用安装目录（或开发目录），避免用户配置目录不可写
+function getDefaultBatchOutputDir() {
+  const appRoot = app.isPackaged ? path.dirname(process.execPath) : app.getAppPath();
+  return path.join(appRoot, 'batch-images');
+}
+
+// 渲染层查询默认输出目录
+ipcMain.handle('resize-get-default-dir', () => {
+  const dir = getDefaultBatchOutputDir();
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  return dir;
+});
+
+// 渲染层选择新输出目录
+ipcMain.handle('resize-select-output-dir', async () => {
+  if (!mainWindow) return { ok: false };
+  const result = await dialog.showOpenDialog(mainWindow, {
+    properties: ['openDirectory'],
+    title: '选择批量输出目录'
+  });
+  if (result.canceled || !result.filePaths.length) return { ok: false };
+  return { ok: true, dir: result.filePaths[0] };
+});
+
+// 渲染层打开文件夹
+ipcMain.handle('resize-open-folder', async (event, dirPath) => {
+  if (!dirPath || !fs.existsSync(dirPath)) return { ok: false, error: '目录不存在' };
+  shell.openPath(dirPath);
+  return { ok: true };
 });
 
 // ═══════════════════════════════════════════════
