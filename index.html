@@ -80,6 +80,30 @@
           <span class="icon">📰</span>
           <span class="label">新闻聚合</span>
         </button>
+        <button class="tool-btn" data-tool="git-cheatsheet">
+          <span class="icon">🐙</span>
+          <span class="label">Git速查</span>
+        </button>
+        <button class="tool-btn" data-tool="algorithm">
+          <span class="icon">📊</span>
+          <span class="label">算法可视化</span>
+        </button>
+        <button class="tool-btn" data-tool="patterns">
+          <span class="icon">🧩</span>
+          <span class="label">设计模式</span>
+        </button>
+        <button class="tool-btn" data-tool="leetcode">
+          <span class="icon">📝</span>
+          <span class="label">每日10题</span>
+        </button>
+        <button class="tool-btn" data-tool="trending">
+          <span class="icon">🔥</span>
+          <span class="label">GitHub趋势</span>
+        </button>
+        <button class="tool-btn" data-tool="tech-daily">
+          <span class="icon">💡</span>
+          <span class="label">技术日报</span>
+        </button>
       </nav>
       <div class="sidebar-footer">v1.0.0</div>
     </div>
@@ -970,6 +994,118 @@
           <div class="news-categories" id="news-categories">
             <div class="news-loading">加载中...</div>
           </div>
+        </div>
+      </div>
+
+      <!-- Git 命令速查卡 -->
+      <div id="git-cheatsheet-tool" class="tool-panel">
+        <div class="panel-header">
+          <h2>🐙 Git 命令速查</h2>
+          <input type="text" class="git-search" id="git-search" placeholder="搜索命令、说明..." />
+        </div>
+        <div class="panel-body">
+          <div class="git-filter-bar" id="git-filter-bar"></div>
+          <div id="git-cmd-list"></div>
+        </div>
+      </div>
+
+      <!-- 算法可视化 -->
+      <div id="algorithm-tool" class="tool-panel">
+        <div class="panel-header">
+          <h2>📊 算法可视化</h2>
+          <div class="algo-controls">
+            <select id="algo-select">
+              <option value="bubble">冒泡排序</option>
+              <option value="selection">选择排序</option>
+              <option value="insertion">插入排序</option>
+              <option value="quick">快速排序</option>
+              <option value="merge">归并排序</option>
+            </select>
+            <label>数量 <input type="range" id="algo-size" min="5" max="40" value="15" /></label>
+            <label>速度 <input type="range" id="algo-speed" min="1" max="10" value="6" /></label>
+            <button class="btn btn-secondary" id="algo-new">🎲 新数据</button>
+            <button class="btn btn-secondary" id="algo-reset">⏮ 重置</button>
+            <button class="btn btn-secondary" id="algo-step">⏭ 单步</button>
+            <button class="btn btn-primary" id="algo-play">▶ 播放</button>
+          </div>
+        </div>
+        <div class="panel-body">
+          <div class="algo-info-bar">
+            <span id="algo-complexity"></span>
+            <span id="algo-info"></span>
+            <span id="algo-step-counter">0 / 0</span>
+          </div>
+          <div class="algo-canvas-wrap"><canvas id="algo-canvas"></canvas></div>
+        </div>
+      </div>
+
+      <!-- 设计模式 -->
+      <div id="patterns-tool" class="tool-panel">
+        <div class="panel-header">
+          <h2>🧩 设计模式速查</h2>
+          <input type="text" class="git-search" id="pattern-search" placeholder="搜索模式..." />
+        </div>
+        <div class="panel-body">
+          <div class="git-filter-bar" id="pattern-filter-bar"></div>
+          <div id="pattern-list"></div>
+        </div>
+      </div>
+
+      <!-- 每日10题 -->
+      <div id="leetcode-tool" class="tool-panel">
+        <div class="panel-header">
+          <h2>📝 力扣每日 10 题</h2>
+          <button class="btn btn-secondary" id="leetcode-refresh">🔄 刷新</button>
+        </div>
+        <div class="panel-body">
+          <div id="leetcode-content"><div class="news-loading">加载中...</div></div>
+        </div>
+      </div>
+
+      <!-- GitHub Trending -->
+      <div id="trending-tool" class="tool-panel">
+        <div class="panel-header">
+          <h2>🔥 GitHub Trending</h2>
+          <div class="algo-controls">
+            <select id="trending-lang">
+              <option value="">所有语言</option>
+              <option value="javascript">JavaScript</option>
+              <option value="typescript">TypeScript</option>
+              <option value="python">Python</option>
+              <option value="go">Go</option>
+              <option value="rust">Rust</option>
+              <option value="java">Java</option>
+              <option value="c%2B%2B">C++</option>
+              <option value="c">C</option>
+              <option value="c%23">C#</option>
+              <option value="php">PHP</option>
+              <option value="swift">Swift</option>
+              <option value="kotlin">Kotlin</option>
+              <option value="vue">Vue</option>
+              <option value="html">HTML</option>
+              <option value="shell">Shell</option>
+            </select>
+            <select id="trending-since">
+              <option value="daily">今日</option>
+              <option value="weekly">本周</option>
+              <option value="monthly">本月</option>
+            </select>
+            <button class="btn btn-secondary" id="trending-refresh">🔄 刷新</button>
+          </div>
+        </div>
+        <div class="panel-body">
+          <div id="trending-list"><div class="news-loading">加载中...</div></div>
+        </div>
+      </div>
+
+      <!-- 技术日报 -->
+      <div id="tech-daily-tool" class="tool-panel">
+        <div class="panel-header">
+          <h2>💡 技术日报</h2>
+          <button class="btn btn-secondary" id="tech-daily-refresh">🔄 刷新</button>
+        </div>
+        <div class="panel-body">
+          <div id="tech-daily-content"><div class="news-loading">加载中...</div></div>
         </div>
       </div>
     </div>

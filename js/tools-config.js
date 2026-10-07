@@ -12,7 +12,13 @@ const TOOLS = [
   { id: 'qrcode', icon: '📱', label: '二维码' },
   { id: 'mock', icon: '📊', label: 'Mock工具' },
   { id: 'news', icon: '📰', label: '新闻聚合' },
-  { id: 'clock', icon: '⏱️', label: '打卡提醒' }
+  { id: 'clock', icon: '⏱️', label: '打卡提醒' },
+  { id: 'git-cheatsheet', icon: '🐙', label: 'Git速查' },
+  { id: 'algorithm', icon: '📊', label: '算法可视化' },
+  { id: 'patterns', icon: '🧩', label: '设计模式' },
+  { id: 'leetcode', icon: '📝', label: '每日10题' },
+  { id: 'trending', icon: '🔥', label: 'GitHub趋势' },
+  { id: 'tech-daily', icon: '💡', label: '技术日报' }
 ];
 
 const SHORTCUT_MAP = {

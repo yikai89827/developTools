@@ -2,6 +2,7 @@ const { app, BrowserWindow, globalShortcut, ipcMain, Menu, screen, session, desk
 const path = require('path');
 const fs = require('fs');
 const { execSync } = require('child_process');
+const axios = require('axios');
 const { TOOLS, SHORTCUT_MAP, SCREENSHOT_SHORTCUT } = require('./js/tools-config');
 
 let mainWindow;
@@ -1304,6 +1305,264 @@ ipcMain.on('news-reminder-snooze', () => {
 ipcMain.on('news-reminder-view-all', () => {
   closeNewsReminder();
   openTool('news');
+});
+
+// ═══════════════════════════════════════════════
+//  力扣每日10题 / GitHub Trending / 技术日报
+// ═══════════════════════════════════════════════
+
+// 力扣经典题库：50 道高频面试题，按日期轮换选 10 题（纯本地，无网络请求，杜绝 400）
+const LEETCODE_POOL = [
+  { id: '1', title: '两数之和', slug: 'two-sum', diff: '简单' },
+  { id: '2', title: '两数相加', slug: 'add-two-numbers', diff: '中等' },
+  { id: '3', title: '无重复字符的最长子串', slug: 'longest-substring-without-repeating-characters', diff: '中等' },
+  { id: '5', title: '最长回文子串', slug: 'longest-palindromic-substring', diff: '中等' },
+  { id: '11', title: '盛最多水的容器', slug: 'container-with-most-water', diff: '中等' },
+  { id: '15', title: '三数之和', slug: '3sum', diff: '中等' },
+  { id: '20', title: '有效的括号', slug: 'valid-parentheses', diff: '简单' },
+  { id: '21', title: '合并两个有序链表', slug: 'merge-two-sorted-lists', diff: '简单' },
+  { id: '23', title: '合并K个升序链表', slug: 'merge-k-sorted-lists', diff: '困难' },
+  { id: '42', title: '接雨水', slug: 'trapping-rain-water', diff: '困难' },
+  { id: '53', title: '最大子数组和', slug: 'maximum-subarray', diff: '中等' },
+  { id: '55', title: '跳跃游戏', slug: 'jump-game', diff: '中等' },
+  { id: '70', title: '爬楼梯', slug: 'climbing-stairs', diff: '简单' },
+  { id: '72', title: '编辑距离', slug: 'edit-distance', diff: '中等' },
+  { id: '76', title: '最小覆盖子串', slug: 'minimum-window-substring', diff: '困难' },
+  { id: '94', title: '二叉树的中序遍历', slug: 'binary-tree-inorder-traversal', diff: '简单' },
+  { id: '98', title: '验证二叉搜索树', slug: 'validate-binary-search-tree', diff: '中等' },
+  { id: '101', title: '对称二叉树', slug: 'symmetric-tree', diff: '简单' },
+  { id: '104', title: '二叉树的最大深度', slug: 'maximum-depth-of-binary-tree', diff: '简单' },
+  { id: '121', title: '买卖股票的最佳时机', slug: 'best-time-to-buy-and-sell-stock', diff: '简单' },
+  { id: '136', title: '只出现一次的数字', slug: 'single-number', diff: '简单' },
+  { id: '141', title: '环形链表', slug: 'linked-list-cycle', diff: '简单' },
+  { id: '146', title: 'LRU 缓存', slug: 'lru-cache', diff: '中等' },
+  { id: '155', title: '最小栈', slug: 'min-stack', diff: '中等' },
+  { id: '200', title: '岛屿数量', slug: 'number-of-islands', diff: '中等' },
+  { id: '206', title: '反转链表', slug: 'reverse-linked-list', diff: '简单' },
+  { id: '215', title: '数组中的第K个最大元素', slug: 'kth-largest-element-in-an-array', diff: '中等' },
+  { id: '217', title: '存在重复元素', slug: 'contains-duplicate', diff: '简单' },
+  { id: '230', title: '二叉搜索树中第K小的元素', slug: 'kth-smallest-element-in-a-bst', diff: '中等' },
+  { id: '232', title: '用栈实现队列', slug: 'implement-queue-using-stacks', diff: '简单' },
+  { id: '236', title: '二叉树的最近公共祖先', slug: 'lowest-common-ancestor-of-a-binary-tree', diff: '中等' },
+  { id: '239', title: '滑动窗口最大值', slug: 'sliding-window-maximum', diff: '困难' },
+  { id: '283', title: '移动零', slug: 'move-zeroes', diff: '简单' },
+  { id: '300', title: '最长递增子序列', slug: 'longest-increasing-subsequence', diff: '中等' },
+  { id: '322', title: '零钱兑换', slug: 'coin-change', diff: '中等' },
+  { id: '328', title: '奇偶链表', slug: 'odd-even-linked-list', diff: '中等' },
+  { id: '344', title: '反转字符串', slug: 'reverse-string', diff: '简单' },
+  { id: '347', title: '前K个高频元素', slug: 'top-k-frequent-elements', diff: '中等' },
+  { id: '374', title: '猜数字大小', slug: 'guess-number-higher-or-lower', diff: '简单' },
+  { id: '448', title: '找到所有数组中消失的数字', slug: 'find-all-numbers-disappeared-in-an-array', diff: '简单' },
+  { id: '461', title: '汉明距离', slug: 'hamming-distance', diff: '简单' },
+  { id: '494', title: '目标和', slug: 'target-sum', diff: '中等' },
+  { id: '543', title: '二叉树的直径', slug: 'diameter-of-binary-tree', diff: '简单' },
+  { id: '567', title: '字符串的排列', slug: 'permutation-in-string', diff: '中等' },
+  { id: '617', title: '合并二叉树', slug: 'merge-two-binary-trees', diff: '简单' },
+  { id: '621', title: '任务调度器', slug: 'task-scheduler', diff: '中等' },
+  { id: '647', title: '回文子串', slug: 'palindromic-substrings', diff: '中等' },
+  { id: '704', title: '二分查找', slug: 'binary-search', diff: '简单' },
+  { id: '733', title: '图像渲染', slug: 'flood-fill', diff: '简单' },
+  { id: '912', title: '排序数组', slug: 'sort-an-array', diff: '中等' },
+  { id: '1137', title: '第N个泰波那契数', slug: 'n-th-tribonacci-number', diff: '简单' },
+];
+
+// 力扣每日 10 题：50 题池按日期轮换选 10 题（纯本地，秒回，不 400）
+ipcMain.handle('leetcode-fetch-daily', async () => {
+  const now = new Date();
+  const dayOfYear = Math.floor((now - new Date(now.getFullYear(), 0, 0)) / 86400000);
+  // 步长 7 轮换起始位，50 题池每天起点不同，5 天一圈
+  const start = (dayOfYear * 7) % LEETCODE_POOL.length;
+  const items = [];
+  for (let i = 0; i < 10; i++) {
+    const q = LEETCODE_POOL[(start + i) % LEETCODE_POOL.length];
+    items.push({
+      questionFrontendId: q.id,
+      questionTitle: q.title,
+      titleSlug: q.slug,
+      difficulty: q.diff,
+    });
+  }
+  return { items, date: now.toISOString().slice(0, 10), pool: true };
+});
+
+// GitHub Trending 离线兜底（断网时展示热门仓库）
+const TRENDING_FALLBACK = [
+  { author: 'langchain-ai', name: 'langchain', description: 'Build context-aware reasoning applications with LLMs.', language: 'Python', languageColor: '#3572A5', stars: 96000, forks: 15700, starsToday: 120, url: 'https://github.com/langchain-ai/langchain' },
+  { author: 'microsoft', name: 'generative-ai-for-beginners', description: '21 lessons covering Generative AI fundamentals.', language: 'Jupyter Notebook', languageColor: '#DA5B0B', stars: 58000, forks: 31000, starsToday: 90, url: 'https://github.com/microsoft/generative-ai-for-beginners' },
+  { author: 'ollama', name: 'ollama', description: 'Get up and running with Llama 3, Mistral, Gemma, and other LLMs locally.', language: 'Go', languageColor: '#00ADD8', stars: 85000, forks: 6500, starsToday: 110, url: 'https://github.com/ollama/ollama' },
+  { author: 'openai', name: 'whisper', description: 'Robust Speech Recognition via Large-scale Weak Supervision.', language: 'Python', languageColor: '#3572A5', stars: 64000, forks: 7400, starsToday: 60, url: 'https://github.com/openai/whisper' },
+  { author: 'lobehub', name: 'lobe-chat', description: 'LLM Frontend / Framework with ChatGPT / Ollama / Claude support.', language: 'TypeScript', languageColor: '#3178c6', stars: 40000, forks: 9500, starsToday: 80, url: 'https://github.com/lobehub/lobe-chat' },
+  { author: 'electron', name: 'electron', description: 'Build cross-platform desktop apps with JavaScript, HTML, and CSS.', language: 'C++', languageColor: '#f34b7d', stars: 112000, forks: 15000, starsToday: 40, url: 'https://github.com/electron/electron' },
+  { author: 'sindresorhus', name: 'awesome', description: 'Awesome lists about all kinds of interesting topics.', language: '', languageColor: '', stars: 310000, forks: 27000, starsToday: 150, url: 'https://github.com/sindresorhus/awesome' },
+  { author: 'twbs', name: 'bootstrap', description: 'The most popular HTML, CSS, and JS framework for responsive, mobile-first projects.', language: 'JavaScript', languageColor: '#f1e05a', stars: 168000, forks: 78600, starsToday: 35, url: 'https://github.com/twbs/bootstrap' },
+  { author: 'vuejs', name: 'vue', description: 'Vue.js is a progressive, incrementally-adoptable JS framework for building UI on the web.', language: 'Vue', languageColor: '#41b883', stars: 207000, forks: 33600, starsToday: 50, url: 'https://github.com/vuejs/vue' },
+  { author: 'facebook', name: 'react', description: 'The library for web and native user interfaces.', language: 'JavaScript', languageColor: '#f1e05a', stars: 226000, forks: 46000, starsToday: 70, url: 'https://github.com/facebook/react' },
+];
+
+// GitHub Trending（解析 HTML，正则兼容新旧两种 article 结构）
+ipcMain.handle('github-fetch-trending', async (event, lang, since) => {
+  try {
+    const url = `https://github.com/trending/${lang || ''}?since=${since || 'daily'}`;
+    const resp = await axios.get(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml',
+        'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+      },
+      timeout: 15000,
+    });
+    const html = resp.data;
+    const repos = [];
+    // 兼容 Box-row / TrendingBody > article 两种结构
+    const blockRe = /<article[^>]*class="[^"]*(?:Box-row|trending-item)[^"]*"[^>]*>([\s\S]*?)<\/article>/g;
+    let m;
+    while ((m = blockRe.exec(html)) && repos.length < 25) {
+      const block = m[1];
+      // 仓库全名：href="/author/name"
+      const fullMatch = block.match(/href="\/([^"\/]+)\/([^"\/]+)"/);
+      const author = fullMatch ? fullMatch[1] : '';
+      const name = fullMatch ? fullMatch[2] : '';
+      if (!author || !name || author === 'sponsors' || author === 'topics') continue;
+      const desc = (block.match(/<p[^>]*>([\s\S]*?)<\/p>/) || [])[1] || '';
+      const langMatch = block.match(/itemprop="programmingLanguage">([^<]+)</);
+      const langColor = (block.match(/<svg[^>]*>\s*<circle[^>]*fill="([^"]+)"/) || [])[1];
+      const stars = parseInt((block.match(/([\d,]+)\s*stars?\s*(?:today|this week|this month)/i) || [])[1]?.replace(/,/g, '') || '0', 10);
+      // 总 star：匹配 /stargazers 链接后的数字
+      const totalStars = parseInt((block.match(/\/stargazers[^>]*>[\s\S]*?(\d[\d,]*)/) || [])[1]?.replace(/,/g, '') || '0', 10);
+      const forks = parseInt((block.match(/\/forks[^>]*>[\s\S]*?(\d[\d,]*)/) || [])[1]?.replace(/,/g, '') || '0', 10);
+      repos.push({
+        author,
+        name,
+        description: desc.replace(/<[^>]+>/g, '').trim(),
+        language: langMatch ? langMatch[1].trim() : '',
+        languageColor: langColor || '',
+        stars: totalStars || 0,
+        forks: forks || 0,
+        starsToday: stars,
+        url: `https://github.com/${author}/${name}`,
+      });
+    }
+    if (!repos.length) return { items: TRENDING_FALLBACK, fallback: true };
+    return { items: repos, fallback: false };
+  } catch (e) {
+    return { items: TRENDING_FALLBACK, fallback: true, error: e.message };
+  }
+});
+
+// 技术日报离线兜底（断网时展示近期热门）
+const TECH_DAILY_FALLBACK = {
+  v2ex: [
+    { title: '大家最近在读什么技术书？', url: 'https://www.v2ex.com/', replies: 234 },
+    { title: '2024 年程序员副业方向讨论', url: 'https://www.v2ex.com/', replies: 189 },
+    { title: '远程办公一年，聊聊体验', url: 'https://www.v2ex.com/', replies: 156 },
+    { title: '推荐几个小众但好用的开发工具', url: 'https://www.v2ex.com/', replies: 132 },
+    { title: '关于 AI 编程助手的真实使用感受', url: 'https://www.v2ex.com/', replies: 298 },
+    { title: '后端转前端的可行性？', url: 'https://www.v2ex.com/', replies: 87 },
+    { title: 'Mac 上有哪些必装的开发软件', url: 'https://www.v2ex.com/', replies: 145 },
+    { title: '35 岁程序员的出路在哪', url: 'https://www.v2ex.com/', replies: 412 },
+  ],
+  juejin: [
+    { title: '2024 前端趋势：RSC、信号、构建工具三件套', url: 'https://juejin.cn/' },
+    { title: '用 TypeScript 类型体操把同事逼疯', url: 'https://juejin.cn/' },
+    { title: '从零实现一个 Promise，搞懂微任务队列', url: 'https://juejin.cn/' },
+    { title: 'Vue3.4 的性能优化到底做了什么', url: 'https://juejin.cn/' },
+    { title: '大厂面试官最爱问的 20 道闭包题', url: 'https://juejin.cn/' },
+    { title: '一次线上 OOM 排查全过程', url: 'https://juejin.cn/' },
+    { title: '手写 React-Router 核心原理', url: 'https://juejin.cn/' },
+    { title: 'CSS 容器查询实战，告别媒体查询', url: 'https://juejin.cn/' },
+  ],
+  hn: [
+    { title: 'Show HN: A local-first note app with end-to-end encryption', url: 'https://news.ycombinator.com/', score: 842 },
+    { title: 'The state of Rust in 2024', url: 'https://news.ycombinator.com/', score: 678 },
+    { title: 'Why I left Google to build my own thing', url: 'https://news.ycombinator.com/', score: 534 },
+    { title: 'LLM-powered code review: 6 months in production', url: 'https://news.ycombinator.com/', score: 489 },
+    { title: 'A new approach to incremental computation', url: 'https://news.ycombinator.com/', score: 421 },
+    { title: 'SQLite is enough for most apps', url: 'https://news.ycombinator.com/', score: 398 },
+    { title: 'The hidden cost of microservices', url: 'https://news.ycombinator.com/', score: 365 },
+    { title: 'Building a CRDT-based collaborative editor from scratch', url: 'https://news.ycombinator.com/', score: 312 },
+  ],
+};
+
+// 技术日报：V2EX + 掘金 + Hacker News（任一源失败用兜底，保证总有内容）
+ipcMain.handle('tech-daily-fetch', async () => {
+  const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+  const result = {};
+  let anyOk = false;
+
+  // V2EX 热门：优先官方 API，失败回退 RSS
+  try {
+    const r = await axios.get('https://www.v2ex.com/api/topics/hot.json', {
+      headers: { 'User-Agent': UA }, timeout: 10000,
+    });
+    if (Array.isArray(r.data) && r.data.length) {
+      result.v2ex = r.data.slice(0, 15).map(it => ({ title: it.title, url: it.url, replies: it.replies }));
+      anyOk = true;
+    } else { result.v2ex = []; }
+  } catch (e) {
+    // 回退 RSS
+    try {
+      const r = await axios.get('https://www.v2ex.com/feed', { headers: { 'User-Agent': UA }, timeout: 10000, responseType: 'text' });
+      const items = (r.data.match(/<item>([\s\S]*?)<\/item>/g) || []).slice(0, 15).map(b => ({
+        title: (b.match(/<title>([\s\S]*?)<\/title>/) || [])[1] || '',
+        url: (b.match(/<link>([\s\S]*?)<\/link>/) || [])[1] || '',
+        replies: 0,
+      }));
+      result.v2ex = items;
+      anyOk = anyOk || items.length > 0;
+    } catch (e2) { result.v2ex = []; }
+  }
+
+  // 掘金热榜：优先官方 API，失败回退 RSSHub
+  try {
+    const r = await axios.post('https://api.juejin.cn/recommend_api/v1/article/recommend_all_feed', {
+      cursor: '0', id_type: 2, limit: 15, sort_type: 200,
+    }, { headers: { 'User-Agent': UA, 'Content-Type': 'application/json' }, timeout: 10000 });
+    const arr = r.data && r.data.data;
+    if (Array.isArray(arr) && arr.length) {
+      result.juejin = arr.map(it => ({
+        title: (it.article_info && it.article_info.title) || '',
+        url: (it.article_info && it.article_info.article_id) ? `https://juejin.cn/post/${it.article_info.article_id}` : '',
+      })).filter(x => x.title);
+      anyOk = true;
+    } else { result.juejin = []; }
+  } catch (e) {
+    try {
+      const r = await axios.get('https://rsshub.app/juejin/trending/0', { headers: { 'User-Agent': UA }, timeout: 10000, responseType: 'text' });
+      const items = (r.data.match(/<item>([\s\S]*?)<\/item>/g) || []).slice(0, 15).map(block => {
+        const title = (block.match(/<title><!\[CDATA\[([\s\S]*?)\]\]>/) || block.match(/<title>([\s\S]*?)<\/title>/) || [])[1] || '';
+        const link = (block.match(/<link>([\s\S]*?)<\/link>/) || [])[1] || '';
+        return { title: title.replace(/<!\[CDATA\[|\]\]>/g, ''), url: link };
+      });
+      result.juejin = items;
+      anyOk = anyOk || items.length > 0;
+    } catch (e2) { result.juejin = []; }
+  }
+
+  // Hacker News（Firebase API，最稳定）
+  try {
+    const r = await axios.get('https://hacker-news.firebaseio.com/v0/topstories.json', {
+      headers: { 'User-Agent': UA }, timeout: 8000,
+    });
+    const ids = r.data.slice(0, 15);
+    const items = await Promise.all(ids.map(id =>
+      axios.get(`https://hacker-news.firebaseio.com/v0/item/${id}.json`, { headers: { 'User-Agent': UA }, timeout: 8000 })
+        .then(rr => ({ title: rr.data.title, url: rr.data.url || `https://news.ycombinator.com/item?id=${id}`, score: rr.data.score }))
+        .catch(() => null)
+    ));
+    result.hn = items.filter(Boolean);
+    anyOk = anyOk || result.hn.length > 0;
+  } catch (e) { result.hn = []; }
+
+  // 任一源拿到数据即视为成功；全失败则注入兜底，保证页面有内容
+  if (!anyOk) {
+    return Object.assign({}, TECH_DAILY_FALLBACK, { fallback: true });
+  }
+  // 对个别失败的源补兜底
+  if (!result.v2ex || !result.v2ex.length) result.v2ex = TECH_DAILY_FALLBACK.v2ex;
+  if (!result.juejin || !result.juejin.length) result.juejin = TECH_DAILY_FALLBACK.juejin;
+  if (!result.hn || !result.hn.length) result.hn = TECH_DAILY_FALLBACK.hn;
+  result.fallback = false;
+  return result;
 });
 
 // ═══════════════════════════════════════════════

@@ -13,6 +13,12 @@ const { initGeneratorTool } = require('./js/tools/generator');
 const { initMockTool } = require('./js/tools/mock');
 const { initClockTool } = require('./js/tools/clock');
 const { initNewsTool } = require('./js/tools/news');
+const { initGitCheatsheet } = require('./js/tools/git-cheatsheet');
+const { initAlgorithmVisualizer } = require('./js/tools/algorithm-visualizer');
+const { initDesignPatterns } = require('./js/tools/design-patterns');
+const { initLeetcodeDaily } = require('./js/tools/leetcode-daily');
+const { initGithubTrending } = require('./js/tools/github-trending');
+const { initTechDaily } = require('./js/tools/tech-daily');
 
 document.addEventListener('DOMContentLoaded', () => {
   initSidebar();
@@ -30,4 +36,10 @@ document.addEventListener('DOMContentLoaded', () => {
   initMockTool();
   initClockTool();
   initNewsTool();
+  initGitCheatsheet();
+  initAlgorithmVisualizer();
+  initDesignPatterns();
+  initLeetcodeDaily();
+  initGithubTrending();
+  initTechDaily();
 });
