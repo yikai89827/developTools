@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>今日新闻速览</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100%; height: 100%; overflow: hidden;
+      background: rgba(0, 0, 0, 0.95);
+      font-family: -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+      color: #e6edf3; user-select: none;
+    }
+    .container {
+      width: 100%; height: 100%;
+      display: flex; flex-direction: column;
+      animation: fadeIn 0.3s ease-out;
+    }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .header {
+      text-align: center; padding: 30px 20px 16px;
+      border-bottom: 1px solid rgba(88, 212, 200, 0.2);
+    }
+    .header-icon { font-size: 56px; margin-bottom: 10px; }
+    .header-title { font-size: 36px; font-weight: 700; color: #58d4c8; }
+    .header-sub { font-size: 16px; color: #8b949e; margin-top: 6px; }
+    .news-scroll {
+      flex: 1; overflow-y: auto; padding: 20px 40px;
+    }
+    .news-scroll::-webkit-scrollbar { width: 8px; }
+    .news-scroll::-webkit-scrollbar-thumb { background: #30363d; border-radius: 4px; }
+    .cat-title { font-size: 18px; font-weight: 600; margin: 18px 0 10px; color: #58d4c8; }
+    .cat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 12px; margin-bottom: 14px; }
+    .source-card {
+      background: rgba(22, 27, 34, 0.9); border: 1px solid #30363d;
+      border-radius: 8px; padding: 12px 14px;
+    }
+    .source-name { font-size: 13px; font-weight: 600; color: #8b949e; margin-bottom: 8px; }
+    .source-items { display: flex; flex-direction: column; gap: 6px; }
+    .news-item {
+      display: flex; align-items: center; gap: 8px; padding: 5px 8px;
+      border-radius: 4px; cursor: pointer; transition: background 0.15s;
+      font-size: 14px; line-height: 1.4;
+    }
+    .news-item:hover { background: rgba(88, 212, 200, 0.1); }
+    .news-rank { font-size: 12px; color: #8b949e; min-width: 18px; text-align: right; }
+    .news-rank-top { color: #f85149; font-weight: 700; }
+    .news-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .news-hot { font-size: 11px; color: #d29922; white-space: nowrap; }
+    .footer {
+      display: flex; justify-content: center; gap: 16px;
+      padding: 18px; border-top: 1px solid rgba(88, 212, 200, 0.2);
+    }
+    .btn {
+      padding: 12px 32px; border: none; border-radius: 8px;
+      font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.2s;
+    }
+    .btn-primary { background: #58d4c8; color: #0d1117; }
+    .btn-primary:hover { background: #4abfb4; }
+    .btn-secondary { background: #30363d; color: #e6edf3; }
+    .btn-secondary:hover { background: #3d444d; }
+    .empty { text-align: center; color: #8b949e; padding: 60px; font-size: 16px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="header-icon">📰</div>
+      <div class="header-title">今日新闻速览</div>
+      <div class="header-sub" id="news-date"></div>
+    </div>
+    <div class="news-scroll" id="news-content">
+      <div class="empty">加载中...</div>
+    </div>
+    <div class="footer">
+      <button class="btn btn-primary" id="btn-view-all">查看全部</button>
+      <button class="btn btn-secondary" id="btn-later">稍后提醒</button>
+      <button class="btn btn-secondary" id="btn-close">关闭</button>
+    </div>
+  </div>
+  <script>
+    const { ipcRenderer } = require('electron');
+
+    const CAT_LABELS = {
+      hot: '🔥 热搜榜', tech: '💻 科技新闻', world: '🌍 国际媒体',
+      china: '🇨🇳 国内媒体', policy: '📋 政策动态'
+    };
+
+    // 日期
+    const now = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    document.getElementById('news-date').textContent =
+      `${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日 ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+
+    // 加载新闻
+    ipcRenderer.invoke('news-get-all', false).then(data => {
+      renderNews(data);
+    }).catch(() => {
+      document.getElementById('news-content').innerHTML = '<div class="empty">加载失败</div>';
+    });
+
+    function renderNews(data) {
+      const container = document.getElementById('news-content');
+      if (!data || !data.sources) {
+        container.innerHTML = '<div class="empty">暂无数据，请先在主面板刷新</div>';
+        return;
+      }
+
+      const byCat = {};
+      for (const [id, src] of Object.entries(data.sources)) {
+        if (!byCat[src.category]) byCat[src.category] = [];
+        byCat[src.category].push({ id, ...src });
+      }
+
+      let html = '';
+      for (const cat of ['hot', 'tech', 'world', 'china', 'policy']) {
+        const sources = byCat[cat];
+        if (!sources || !sources.length) continue;
+        html += `<div class="cat-title">${CAT_LABELS[cat] || cat}</div>`;
+        html += `<div class="cat-grid">`;
+        for (const src of sources) {
+          html += renderSource(src);
+        }
+        html += `</div>`;
+      }
+      container.innerHTML = html || '<div class="empty">暂无数据</div>';
+
+      container.querySelectorAll('.news-item').forEach(el => {
+        el.addEventListener('click', () => {
+          ipcRenderer.send('news-open-webview', el.dataset.url, el.dataset.title);
+        });
+      });
+    }
+
+    function renderSource(src) {
+      let items = '';
+      if (src.ok && src.items.length) {
+        items = src.items.slice(0, 5).map((it, i) => {
+          const rank = i < 3 ? `news-rank news-rank-top` : 'news-rank';
+          const hot = it.hot ? `<span class="news-hot">${formatHot(it.hot)}</span>` : '';
+          return `<div class="news-item" data-url="${esc(it.url)}" data-title="${esc(it.title)}"><span class="${rank}">${i+1}</span><span class="news-title">${esc(it.title)}</span>${hot}</div>`;
+        }).join('');
+      } else if (!src.ok) {
+        items = `<div style="color:#8b949e;font-size:13px;padding:4px;">获取失败</div>`;
+      }
+      return `<div class="source-card"><div class="source-name">${esc(src.name)}</div><div class="source-items">${items}</div></div>`;
+    }
+
+    function formatHot(n) {
+      if (n > 10000) return (n / 10000).toFixed(1) + '万';
+      return String(n);
+    }
+    function esc(s) {
+      return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    document.getElementById('btn-view-all').addEventListener('click', () => {
+      ipcRenderer.send('news-reminder-view-all');
+    });
+    document.getElementById('btn-later').addEventListener('click', () => {
+      ipcRenderer.send('news-reminder-snooze');
+    });
+    document.getElementById('btn-close').addEventListener('click', () => {
+      ipcRenderer.send('news-reminder-close');
+    });
+  </script>
+</body>
+</html>

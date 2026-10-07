@@ -76,6 +76,10 @@
           <span class="icon">⏱️</span>
           <span class="label">打卡提醒</span>
         </button>
+        <button class="tool-btn" data-tool="news">
+          <span class="icon">📰</span>
+          <span class="label">新闻聚合</span>
+        </button>
       </nav>
       <div class="sidebar-footer">v1.0.0</div>
     </div>
@@ -942,6 +946,32 @@
                 <span class="clock-status-value" id="clock-status-now">--</span>
               </div>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="news-tool" class="tool-panel">
+        <div class="panel-header">
+          <h2>📰 新闻聚合</h2>
+        </div>
+        <div class="panel-body">
+          <div class="news-toolbar">
+            <div class="news-toolbar-left">
+              <button type="button" class="btn btn-primary" id="news-refresh-all">🔄 刷新全部</button>
+              <span class="news-updated" id="news-updated-time">未加载</span>
+            </div>
+            <div class="news-toolbar-right">
+              <label class="news-reminder-toggle">
+                <input type="checkbox" id="news-reminder-enabled" checked /> 每日提醒
+              </label>
+              <input type="time" id="news-reminder-time" value="10:00" />
+              <button type="button" class="btn btn-secondary" id="news-save-config">保存设置</button>
+              <button type="button" class="btn btn-secondary" id="news-test-reminder">预览提醒</button>
+            </div>
+          </div>
+
+          <div class="news-categories" id="news-categories">
+            <div class="news-loading">加载中...</div>
           </div>
         </div>
       </div>

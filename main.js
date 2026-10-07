@@ -27,6 +27,33 @@ const CLOCK_CONFIG_FILE = path.join(
   'dev-tools-clock.json'
 );
 
+// ── 新闻聚合提醒 ──
+let newsTimer = null;
+let newsConfig = null;
+let newsReminderWindows = [];
+let newsSnoozeTimer = null;
+let lastNewsReminderKey = '';
+let newsWebViewWindows = [];
+
+const NEWS_CONFIG_FILE = path.join(
+  (process.env.APPDATA || process.env.HOME || '.'),
+  'dev-tools-news-config.json'
+);
+
+const DEFAULT_NEWS_CONFIG = {
+  enabled: true,
+  time: '10:00'
+};
+
+// 新闻数据获取模块（延迟 require，需要 app.getPath）
+let newsFetcher = null;
+function getNewsFetcher() {
+  if (!newsFetcher) {
+    newsFetcher = require('./js/news-fetcher');
+  }
+  return newsFetcher;
+}
+
 const COLLAPSED_WIDTH = 56;
 const COLLAPSED_HEIGHT = 56;
 const EXPANDED_WIDTH = 210;
@@ -272,6 +299,8 @@ function showFloatWindow() {
   }
   floatWindow.webContents.send('float-collapse');
   floatWindow.showInactive();
+  // 重新置顶到最高层级，防止被其他窗口遮挡
+  floatWindow.setAlwaysOnTop(true, 'screen-saver');
 }
 
 function hideFloatWindow() {
@@ -471,6 +500,8 @@ app.whenReady().then(() => {
   buildMenu();
   // 初始化打卡提醒
   initClockReminder();
+  // 初始化新闻聚合提醒
+  initNewsReminder();
   // 开机自启动：读取配置，若用户已启用则写入系统注册表
   syncAutoLaunch();
 });
@@ -1037,6 +1068,212 @@ ipcMain.handle('clock-get-next-reminder', () => {
     return { next: `下班提醒 ${clockConfig.offTime}（延后${clockConfig.offAfterMinutes}分钟）`, enabled: true };
   }
   return { next: '今日提醒已过', enabled: true };
+});
+
+// ═══════════════════════════════════════════════
+//  新闻聚合提醒
+// ═══════════════════════════════════════════════
+
+function loadNewsConfig() {
+  try {
+    if (fs.existsSync(NEWS_CONFIG_FILE)) {
+      const raw = fs.readFileSync(NEWS_CONFIG_FILE, 'utf-8');
+      return { ...DEFAULT_NEWS_CONFIG, ...JSON.parse(raw) };
+    }
+  } catch (e) {
+    console.error('[news] 加载配置失败:', e.message);
+  }
+  return { ...DEFAULT_NEWS_CONFIG };
+}
+
+function saveNewsConfig(cfg) {
+  try {
+    fs.writeFileSync(NEWS_CONFIG_FILE, JSON.stringify(cfg, null, 2));
+  } catch (e) {
+    console.error('[news] 保存配置失败:', e.message);
+  }
+}
+
+function initNewsReminder() {
+  newsConfig = loadNewsConfig();
+  startNewsTimer();
+}
+
+function startNewsTimer() {
+  if (newsTimer) clearInterval(newsTimer);
+  newsTimer = setInterval(checkNewsReminder, 30000);
+  checkNewsReminder();
+}
+
+function checkNewsReminder() {
+  if (!newsConfig || !newsConfig.enabled) return;
+  if (newsReminderWindows.length) return;
+
+  const now = new Date();
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  const [tH, tM] = (newsConfig.time || '10:00').split(':').map(Number);
+  const targetTotal = tH * 60 + tM;
+  const reminderKey = `news_${now.toDateString()}`;
+
+  if (lastNewsReminderKey !== reminderKey &&
+      nowMinutes >= targetTotal && nowMinutes <= targetTotal + 1) {
+    lastNewsReminderKey = reminderKey;
+    showNewsReminder();
+  }
+
+  // 零点重置
+  if (now.getHours() === 0 && now.getMinutes() === 0) {
+    lastNewsReminderKey = '';
+  }
+}
+
+function showNewsReminder() {
+  if (newsReminderWindows.length) return;
+
+  const displays = screen.getAllDisplays();
+  const primaryId = screen.getPrimaryDisplay().id;
+
+  displays.forEach((display) => {
+    const { x, y, width, height } = display.bounds;
+
+    const win = new BrowserWindow({
+      x, y, width, height,
+      frame: false,
+      transparent: true,
+      backgroundColor: '#00000000',
+      alwaysOnTop: true,
+      skipTaskbar: true,
+      resizable: false,
+      movable: false,
+      fullscreenable: false,
+      show: false,
+      hasShadow: false,
+      webPreferences: {
+        nodeIntegration: true,
+        contextIsolation: false
+      }
+    });
+
+    win.setAlwaysOnTop(true, 'screen-saver');
+    win.loadFile('news-reminder.html');
+
+    win.webContents.on('did-finish-load', () => {
+      if (display.id === primaryId) {
+        win.show();
+        win.focus();
+      } else {
+        win.showInactive();
+      }
+    });
+
+    win.on('closed', () => {
+      newsReminderWindows = newsReminderWindows.filter(w => w !== win);
+    });
+
+    newsReminderWindows.push(win);
+  });
+}
+
+function closeNewsReminder() {
+  if (newsSnoozeTimer) {
+    clearTimeout(newsSnoozeTimer);
+    newsSnoozeTimer = null;
+  }
+  newsReminderWindows.forEach(w => {
+    try { w.close(); } catch {}
+  });
+  newsReminderWindows = [];
+}
+
+function snoozeNewsReminder() {
+  closeNewsReminder();
+  newsSnoozeTimer = setTimeout(() => {
+    showNewsReminder();
+  }, 10 * 60 * 1000);
+}
+
+// 打开 WebView 窗口
+function openNewsWebView(url, title) {
+  if (!url) return;
+  // 限制最多 5 个
+  if (newsWebViewWindows.length >= 5) {
+    const oldest = newsWebViewWindows.shift();
+    try { oldest.close(); } catch {}
+  }
+
+  const win = new BrowserWindow({
+    width: 900,
+    height: 640,
+    title: title || '新闻原文',
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true
+    }
+  });
+
+  win.loadURL(url);
+  win.on('closed', () => {
+    newsWebViewWindows = newsWebViewWindows.filter(w => w !== win);
+  });
+  newsWebViewWindows.push(win);
+}
+
+// ── 新闻 IPC ──
+ipcMain.handle('news-get-all', async (event, force) => {
+  try {
+    return await getNewsFetcher().fetchAllNews(!!force);
+  } catch (e) {
+    console.error('[news] fetchAllNews 失败:', e.message);
+    return { timestamp: Date.now(), sources: {}, error: e.message };
+  }
+});
+
+ipcMain.handle('news-refresh', async () => {
+  try {
+    return await getNewsFetcher().fetchAllNews(true);
+  } catch (e) {
+    return { timestamp: Date.now(), sources: {}, error: e.message };
+  }
+});
+
+ipcMain.handle('news-refresh-source', async (event, sourceId) => {
+  try {
+    return await getNewsFetcher().fetchSingleSource(sourceId);
+  } catch (e) {
+    return { id: sourceId, ok: false, error: e.message, items: [] };
+  }
+});
+
+ipcMain.on('news-save-config', (event, cfg) => {
+  newsConfig = { ...DEFAULT_NEWS_CONFIG, ...cfg };
+  saveNewsConfig(newsConfig);
+  startNewsTimer();
+  event.reply('news-config-saved', true);
+});
+
+ipcMain.handle('news-get-config', () => {
+  return newsConfig || loadNewsConfig();
+});
+
+ipcMain.on('news-open-webview', (event, url, title) => {
+  openNewsWebView(url, title);
+});
+
+ipcMain.on('news-test-reminder', () => {
+  showNewsReminder();
+});
+
+ipcMain.on('news-reminder-close', () => {
+  closeNewsReminder();
+});
+
+ipcMain.on('news-reminder-snooze', () => {
+  snoozeNewsReminder();
+});
+
+ipcMain.on('news-reminder-view-all', () => {
+  closeNewsReminder();
+  openTool('news');
 });
 
 // ═══════════════════════════════════════════════
