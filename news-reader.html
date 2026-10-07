@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>新闻阅读</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, 'Microsoft YaHei', sans-serif; background: #1a1a2e; color: #e0e0e0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+    .tab-bar { display: flex; align-items: center; background: #16213e; border-bottom: 1px solid #0f3460; padding: 4px 8px; gap: 2px; overflow-x: auto; flex-shrink: 0; min-height: 38px; }
+    .tab-bar::-webkit-scrollbar { height: 3px; }
+    .tab-bar::-webkit-scrollbar-thumb { background: #0f3460; border-radius: 2px; }
+    .tab { display: flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 6px 6px 0 0; cursor: pointer; font-size: 13px; color: #8899aa; white-space: nowrap; flex-shrink: 0; transition: all 0.15s; background: transparent; max-width: 200px; }
+    .tab:hover { background: #1a1a3e; color: #ccc; }
+    .tab.active { background: #0d1117; color: #58a6ff; border-bottom: 2px solid #58a6ff; }
+    .tab-title { overflow: hidden; text-overflow: ellipsis; }
+    .tab-close { font-size: 16px; opacity: 0.5; border-radius: 3px; padding: 0 3px; }
+    .tab-close:hover { opacity: 1; background: rgba(255,80,80,0.3); }
+    .webview-container { flex: 1; position: relative; overflow: hidden; background: #0d1117; }
+    webview { width: 100%; height: 100%; display: none; }
+    webview.active { display: flex; }
+    .empty-hint { display: flex; align-items: center; justify-content: center; height: 100%; color: #555; font-size: 14px; }
+    /* 美化滚动条 */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #0f3460; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #1a4a8a; }
+    ::-webkit-scrollbar-corner { background: transparent; }
+  </style>
+</head>
+<body>
+  <div class="tab-bar" id="tabBar"></div>
+  <div class="webview-container" id="wvContainer">
+    <div class="empty-hint">点击新闻标题打开文章</div>
+  </div>
+  <script src="js/news-reader.js"></script>
+</body>
+</html>

@@ -34,6 +34,9 @@ let newsReminderWindows = [];
 let newsSnoozeTimer = null;
 let lastNewsReminderKey = '';
 let newsWebViewWindows = [];
+let newsReaderWindow = null;
+let newsReaderReady = false;
+let newsReaderQueue = [];
 
 const NEWS_CONFIG_FILE = path.join(
   (process.env.APPDATA || process.env.HOME || '.'),
@@ -352,7 +355,8 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
-      enableRemoteModule: true
+      enableRemoteModule: true,
+      webviewTag: true
     },
     icon: getAppIcon(),
     skipTaskbar: false,
@@ -1192,30 +1196,41 @@ function snoozeNewsReminder() {
   }, 10 * 60 * 1000);
 }
 
-// 打开 WebView 窗口
-function openNewsWebView(url, title) {
+// 打开新闻阅读窗口（单窗口多页签）
+function openNewsReaderTab(url, title) {
   if (!url) return;
-  // 限制最多 5 个
-  if (newsWebViewWindows.length >= 5) {
-    const oldest = newsWebViewWindows.shift();
-    try { oldest.close(); } catch {}
-  }
 
-  const win = new BrowserWindow({
-    width: 900,
-    height: 640,
-    title: title || '新闻原文',
-    webPreferences: {
-      nodeIntegration: false,
-      contextIsolation: true
+  if (newsReaderWindow && !newsReaderWindow.isDestroyed()) {
+    // 窗口已存在
+    if (newsReaderReady) {
+      newsReaderWindow.webContents.send('news-add-tab', { url, title });
+    } else {
+      newsReaderQueue.push({ url, title });
     }
-  });
-
-  win.loadURL(url);
-  win.on('closed', () => {
-    newsWebViewWindows = newsWebViewWindows.filter(w => w !== win);
-  });
-  newsWebViewWindows.push(win);
+    // 把窗口提到前面
+    if (newsReaderWindow.isMinimized()) newsReaderWindow.restore();
+    newsReaderWindow.focus();
+  } else {
+    // 创建新窗口
+    newsReaderReady = false;
+    newsReaderQueue = [{ url, title }];
+    newsReaderWindow = new BrowserWindow({
+      width: 1000,
+      height: 700,
+      title: '新闻阅读',
+      webPreferences: {
+        nodeIntegration: true,
+        contextIsolation: false,
+        webviewTag: true
+      }
+    });
+    newsReaderWindow.loadFile('news-reader.html');
+    newsReaderWindow.on('closed', () => {
+      newsReaderWindow = null;
+      newsReaderReady = false;
+      newsReaderQueue = [];
+    });
+  }
 }
 
 // ── 新闻 IPC ──
@@ -1255,8 +1270,23 @@ ipcMain.handle('news-get-config', () => {
   return newsConfig || loadNewsConfig();
 });
 
+ipcMain.on('news-open-tab', (event, url, title) => {
+  openNewsReaderTab(url, title);
+});
+
 ipcMain.on('news-open-webview', (event, url, title) => {
-  openNewsWebView(url, title);
+  openNewsReaderTab(url, title);
+});
+
+ipcMain.on('news-reader-ready', () => {
+  newsReaderReady = true;
+  // 发送排队的页签
+  for (const item of newsReaderQueue) {
+    if (newsReaderWindow && !newsReaderWindow.isDestroyed()) {
+      newsReaderWindow.webContents.send('news-add-tab', item);
+    }
+  }
+  newsReaderQueue = [];
 });
 
 ipcMain.on('news-test-reminder', () => {

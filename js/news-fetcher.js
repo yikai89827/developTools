@@ -9,37 +9,79 @@ const { app } = require('electron');
 const CACHE_FILE = path.join(app.getPath('userData'), 'dev-tools-news.json');
 const CACHE_TTL = 30 * 60 * 1000; // 30 分钟
 
+// API 凭证
+const APIHZ_ID = '10017190';
+const APIHZ_KEY = 'b79cd6a6906c0024a9cf48665ac78ae4';
+const XXAPI_KEY = 'cd13f676ed795b9a';
+
+// 所有请求带 User-Agent
+const AXIOS_OPTS = {
+  timeout: 12000,
+  headers: {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Accept': 'application/json, text/xml, application/xml, */*',
+  },
+};
+
+// ── xxapi.cn 统一请求 ──
+async function fetchXxapi(endpoint) {
+  const url = `https://v2.xxapi.cn/api/${endpoint}?key=${XXAPI_KEY}`;
+  const resp = await axios.get(url, AXIOS_OPTS);
+  const data = resp.data;
+  if (data.code !== 200) throw new Error(data.msg || 'xxapi 返回错误');
+  return data.data || [];
+}
+
 // 数据源配置
 const SOURCES = [
-  // ── 聚合 API（vvhan）──
-  { id: 'baidu', name: '百度热榜', category: 'hot', type: 'vvhan', endpoint: 'baidu' },
-  { id: 'weibo', name: '微博热搜', category: 'hot', type: 'vvhan', endpoint: 'weibo' },
-  { id: 'douyin', name: '抖音热榜', category: 'hot', type: 'vvhan', endpoint: 'douyin' },
-  { id: 'zhihu', name: '知乎热榜', category: 'hot', type: 'vvhan', endpoint: 'zhihu' },
-  { id: 'xiaohongshu', name: '小红书热门', category: 'hot', type: 'vvhan', endpoint: 'xiaohongshu' },
-  { id: 'maoyan', name: '猫眼票房', category: 'hot', type: 'vvhan', endpoint: 'maoyan' },
-  // ── 科技新闻（Hacker News 官方 API）──
+  // ── 热搜榜 ──
+  { id: 'baidu', name: '百度热榜', category: 'hot', type: 'xxapi', endpoint: 'baiduhot',
+    mapFn: (it) => ({ title: it.title || '', url: it.url || '', hot: it.hot ? parseInt(String(it.hot).replace(/\D/g,''),10) : null }) },
+  { id: 'weibo', name: '微博热搜', category: 'hot', type: 'apihz', api: 'xinwen/weibo.php' },
+  { id: 'douyin', name: '抖音热榜', category: 'hot', type: 'xxapi', endpoint: 'douyinhot',
+    mapFn: (it) => ({ title: it.word || '', url: `https://www.douyin.com/search/${encodeURIComponent(it.word||'')}`, hot: it.hot_value || null }) },
+  { id: 'toutiao', name: '今日头条', category: 'hot', type: 'apihz', api: 'xinwen/toutiao.php' },
+  { id: 'zhihu', name: '知乎热榜', category: 'hot', type: 'xxapi', endpoint: 'zhihuhot',
+    mapFn: (it) => ({ title: it.title || '', url: it.url || '', hot: it.hot ? parseInt(String(it.hot).replace(/\D/g,''),10) : null }) },
+  { id: 'bilibili', name: '哔哩哔哩', category: 'hot', type: 'xxapi', endpoint: 'bilibilihot',
+    mapFn: (it, i) => {
+      // bilibilihot 返回字符串数组
+      const title = typeof it === 'string' ? it : (it.title || it.word || '');
+      return { title, url: `https://search.bilibili.com/all?keyword=${encodeURIComponent(title)}`, hot: null };
+    } },
+  { id: 'csdn', name: 'CSDN', category: 'hot', type: 'xxapi', endpoint: 'csdnhot',
+    mapFn: (it) => ({ title: it.title || '', url: it.url || '', hot: it.hot ? parseInt(String(it.hot).replace(/\D/g,''),10) : null }) },
+  { id: 'maoyan', name: '猫眼票房', category: 'hot', type: 'apihz', api: 'bang/maoyan1.php',
+    mapFn: (it) => ({ title: `${it.movieName || ''} (${it.sumBoxDesc || ''})`, url: `https://maoyan.com/films?movieName=${encodeURIComponent(it.movieName||'')}`, hot: null }) },
+  // ── 科技新闻 ──
+  { id: '36kr', name: '36氪热榜', category: 'tech', type: 'xxapi', endpoint: 'hot36kr',
+    mapFn: (it) => ({ title: it.templateMaterial?.widgetTitle || '', url: it.itemId ? `https://36kr.com/p/${it.itemId}` : '', hot: it.templateMaterial?.statPraise || null }) },
   { id: 'hackernews', name: 'Hacker News', category: 'tech', type: 'hn' },
-  // ── RSS 源 ──
-  { id: 'bbc', name: 'BBC 头条', category: 'world', type: 'rss', url: 'https://feeds.bbci.co.uk/news/rss.xml' },
-  { id: 'reuters', name: 'Reuters', category: 'world', type: 'rss', url: 'https://www.reutersagency.com/feed/?best-topics=top-news' },
-  { id: 'xinhua', name: '新华社', category: 'china', type: 'rss', url: 'https://www.xinhuanet.com/politics/news_politics.xml' },
+  { id: 'techcrunch', name: 'TechCrunch', category: 'tech', type: 'rss', url: 'https://techcrunch.com/feed/' },
+  // ── 国际媒体 ──
+  { id: 'guardian', name: 'The Guardian', category: 'world', type: 'rss', url: 'https://www.theguardian.com/world/rss' },
+  { id: 'npr', name: 'NPR News', category: 'world', type: 'rss', url: 'https://feeds.npr.org/1001/rss.xml' },
+  // ── 国内媒体 ──
+  { id: 'xinhua', name: '新华社', category: 'china', type: 'rss', url: 'http://www.xinhuanet.com/politics/news_politics.xml' },
   { id: 'people', name: '人民网', category: 'china', type: 'rss', url: 'http://www.people.com.cn/rss/politics.xml' },
-  { id: 'gov_policy', name: '中央政策', category: 'policy', type: 'rss', url: 'https://rsshub.app/gov/china/policy' },
-  { id: 'hunan_policy', name: '湖南省政策', category: 'policy', type: 'rss', url: 'https://rsshub.app/gov/hunan/policy' },
+  // ── 政策动态 ──
+  { id: 'gov_policy', name: '中央政策', category: 'policy', type: 'rss', url: 'http://www.people.com.cn/rss/politics.xml' },
 ];
 
-// 获取所有源配置
 function getSources() {
   return SOURCES;
 }
 
-// 简易 RSS XML 解析（主进程无 DOMParser，用正则提取 item/title/link）
+// 去除 CDATA 包裹
+function stripCDATA(s) {
+  if (!s) return '';
+  return s.replace(/^<!\[CDATA\[([\s\S]*?)\]\]>$/i, '$1').replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1').trim();
+}
+
+// 简易 RSS XML 解析
 function parseRSS(xml) {
   const items = [];
   const itemRegex = /<item[\s\S]*?<\/item>/gi;
-  const titleRegex = /<!\[CDATA\[([\s\S]*?)\]\]>|<title[^>]*>([\s\S]*?)<\/title>/i;
-  const linkRegex = /<link[^>]*>([\s\S]*?)<\/link>|<link[^>]*href="([^"]*)"/i;
 
   let match;
   while ((match = itemRegex.exec(xml)) !== null && items.length < 15) {
@@ -47,11 +89,16 @@ function parseRSS(xml) {
     let title = '';
     let link = '';
 
-    const tm = block.match(titleRegex);
-    if (tm) title = (tm[1] || tm[2] || '').trim();
+    const tm = block.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+    if (tm) title = stripCDATA(tm[1]).trim();
 
-    const lm = block.match(linkRegex);
-    if (lm) link = (lm[1] || lm[2] || '').trim();
+    const lm1 = block.match(/<link[^>]*>([\s\S]*?)<\/link>/i);
+    const lm2 = block.match(/<link[^>]*href="([^"]*)"/i);
+    if (lm1 && lm1[1].trim()) {
+      link = stripCDATA(lm1[1]).trim();
+    } else if (lm2) {
+      link = lm2[1].trim();
+    }
 
     if (title) {
       items.push({ title: decodeXmlEntities(title), url: link, hot: null });
@@ -62,37 +109,62 @@ function parseRSS(xml) {
 
 function decodeXmlEntities(s) {
   return s.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+    .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&#(\d+);/g, (m, c) => String.fromCharCode(c));
+}
+
+// ── apihz.cn API（微博/头条/猫眼）──
+async function fetchApihz(apiPath, mapFn) {
+  const url = `https://cn.apihz.cn/api/${apiPath}?id=${APIHZ_ID}&key=${APIHZ_KEY}`;
+  const resp = await axios.get(url, AXIOS_OPTS);
+  const data = resp.data;
+  if (data.code !== 200) throw new Error(data.msg || 'apihz 返回错误');
+  const arr = data.data || [];
+  return arr.slice(0, 15).map((it, i) => {
+    if (mapFn) return mapFn(it, i);
+    return {
+      title: it.title || '',
+      url: it.scheme || it.url || '',
+      hot: typeof it.desc_extr === 'number' ? it.desc_extr : (it.desc_extr ? parseInt(String(it.desc_extr).replace(/\D/g, ''), 10) || null : null),
+    };
+  });
+}
+
+// ── Hacker News 官方 API ──
+async function fetchHackerNews() {
+  const resp = await axios.get('https://hacker-news.firebaseio.com/v0/topstories.json', { ...AXIOS_OPTS, timeout: 8000 });
+  const ids = resp.data.slice(0, 15);
+  const items = await Promise.all(ids.map(id =>
+    axios.get(`https://hacker-news.firebaseio.com/v0/item/${id}.json`, { ...AXIOS_OPTS, timeout: 8000 })
+      .then(r => ({ title: r.data.title, url: r.data.url || `https://news.ycombinator.com/item?id=${id}`, hot: r.data.score }))
+      .catch(() => null)
+  ));
+  return items.filter(Boolean);
 }
 
 // fetch 单个源
 async function fetchSource(source) {
-  const timeout = 10000;
-  if (source.type === 'vvhan') {
-    const resp = await axios.get(`https://api.vvhan.com/api/hotlist/${source.endpoint}`, { timeout });
-    const data = resp.data;
-    // vvhan 返回 { success, name, data: [{title, url, hot, ...}] } 或直接数组
-    const arr = Array.isArray(data) ? data : (data.data || []);
-    return arr.slice(0, 15).map(it => ({
-      title: it.title || '',
-      url: it.url || it.link || '',
-      hot: it.hot || null,
-    }));
+  // apihz.cn 源
+  if (source.type === 'apihz') {
+    return await fetchApihz(source.api, source.mapFn);
   }
 
+  // xxapi.cn 源
+  if (source.type === 'xxapi') {
+    const arr = await fetchXxapi(source.endpoint);
+    return arr.slice(0, 15).map((it, i) => {
+      if (source.mapFn) return source.mapFn(it, i);
+      return { title: it.title || '', url: it.url || '', hot: null };
+    });
+  }
+
+  // Hacker News
   if (source.type === 'hn') {
-    const resp = await axios.get('https://hacker-news.firebaseio.com/v0/topstories.json', { timeout });
-    const ids = resp.data.slice(0, 15);
-    const items = await Promise.all(ids.map(id =>
-      axios.get(`https://hacker-news.firebaseio.com/v0/item/${id}.json`, { timeout: 8000 })
-        .then(r => ({ title: r.data.title, url: r.data.url || `https://news.ycombinator.com/item?id=${id}`, hot: r.data.score }))
-        .catch(() => null)
-    ));
-    return items.filter(Boolean);
+    return await fetchHackerNews();
   }
 
+  // RSS
   if (source.type === 'rss') {
-    const resp = await axios.get(source.url, { timeout, responseType: 'text' });
+    const resp = await axios.get(source.url, { ...AXIOS_OPTS, responseType: 'text' });
     return parseRSS(resp.data);
   }
 
@@ -101,7 +173,6 @@ async function fetchSource(source) {
 
 // 并发获取所有新闻
 async function fetchAllNews(force = false) {
-  // 检查缓存
   if (!force) {
     const cached = getCachedNews();
     if (cached) return cached;
@@ -134,22 +205,18 @@ async function fetchSingleSource(sourceId) {
   }
 }
 
-// 读取缓存（未过期返回数据，否则 null）
 function getCachedNews() {
   try {
     if (!fs.existsSync(CACHE_FILE)) return null;
     const raw = fs.readFileSync(CACHE_FILE, 'utf-8');
     const data = JSON.parse(raw);
-    if (Date.now() - data.timestamp < CACHE_TTL) {
-      return data;
-    }
+    if (Date.now() - data.timestamp < CACHE_TTL) return data;
     return null;
   } catch {
     return null;
   }
 }
 
-// 保存缓存
 function saveCache(data) {
   try {
     fs.writeFileSync(CACHE_FILE, JSON.stringify(data, null, 2));
