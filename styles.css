@@ -712,6 +712,25 @@ textarea.has-result {
 #image-preview,
 #svg-preview,
 #screenshot-preview:not([hidden]),
+#qrcode-restyle-preview {
+  margin-top: 8px;
+  padding: 16px;
+  background-color: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  border: 1px dashed var(--border-color);
+  min-height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#qrcode-restyle-preview canvas,
+#qrcode-restyle-preview img {
+  max-width: 100%;
+  max-height: 360px;
+  border-radius: var(--radius-sm);
+}
+
 #qrcode-preview,
 #qrcode-image-preview {
   margin: 16px 0;

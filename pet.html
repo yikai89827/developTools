@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>桌面宠物</title>
+  <link rel="stylesheet" href="pet.css">
+</head>
+<body>
+  <div class="stage">
+    <svg class="arms" id="arms" xmlns="http://www.w3.org/2000/svg">
+      <path id="arm-left" />
+      <path id="arm-right" />
+      <path id="arm-mouse" />
+    </svg>
+    <svg class="dog" id="dog" viewBox="0 0 280 150" xmlns="http://www.w3.org/2000/svg">
+      <g class="tail">
+        <path d="M210 108 C250 96 258 62 232 48" fill="none" stroke="#e39a45" stroke-width="16" stroke-linecap="round"/>
+        <path d="M210 108 C250 96 258 62 232 48" fill="none" stroke="#f2c27a" stroke-width="7" stroke-linecap="round"/>
+      </g>
+      <ellipse class="hind" cx="112" cy="132" rx="16" ry="11"/>
+      <ellipse class="body" cx="140" cy="112" rx="78" ry="36"/>
+      <ellipse cx="140" cy="120" rx="40" ry="16" fill="#fff1dc"/>
+      <g class="head">
+        <g class="ear-left">
+          <ellipse class="ear" cx="86" cy="58" rx="22" ry="30"/>
+          <ellipse class="ear-inner" cx="86" cy="64" rx="11" ry="16"/>
+        </g>
+        <g class="ear-right">
+          <ellipse class="ear" cx="194" cy="58" rx="22" ry="30"/>
+          <ellipse class="ear-inner" cx="194" cy="64" rx="11" ry="16"/>
+        </g>
+        <ellipse cx="140" cy="70" rx="60" ry="44" fill="#f6c27a"/>
+        <ellipse cx="140" cy="86" rx="28" ry="16" fill="#fff3e2"/>
+        <ellipse cx="140" cy="80" rx="7" ry="5" fill="#4a3428"/>
+        <path d="M130 88 Q140 96 150 88" fill="none" stroke="#c47b55" stroke-width="2.2" stroke-linecap="round"/>
+        <ellipse class="tongue" cx="140" cy="94" rx="6" ry="7"/>
+        <g class="eye left-eye">
+          <ellipse cx="118" cy="66" rx="10" ry="12" fill="#fff"/>
+          <circle class="pupil" cx="118" cy="68" r="5"/>
+        </g>
+        <g class="eye right-eye">
+          <ellipse cx="162" cy="66" rx="10" ry="12" fill="#fff"/>
+          <circle class="pupil" cx="162" cy="68" r="5"/>
+        </g>
+        <path class="lid" d="M106 66 Q118 54 130 66"/>
+        <path class="lid" d="M150 66 Q162 54 174 66"/>
+      </g>
+    </svg>
+
+    <div class="desk" id="desk">
+      <div class="keyboard" id="keyboard"></div>
+      <div class="mouse-device" id="mouse-device">
+        <div class="mouse-btn" id="mouse-left"></div>
+        <div class="mouse-btn" id="mouse-right"></div>
+        <div class="mouse-wheel"></div>
+      </div>
+      <div class="paw" id="paw-left"></div>
+      <div class="paw" id="paw-right"></div>
+      <div class="paw" id="paw-mouse"></div>
+    </div>
+    <div class="hint">拖动小狗移动位置</div>
+  </div>
+  <script src="pet.js"></script>
+</body>
+</html>

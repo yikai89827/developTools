@@ -19,6 +19,7 @@ const { initDesignPatterns } = require('./js/tools/design-patterns');
 const { initLeetcodeDaily } = require('./js/tools/leetcode-daily');
 const { initGithubTrending } = require('./js/tools/github-trending');
 const { initTechDaily } = require('./js/tools/tech-daily');
+const { initPetTool } = require('./js/tools/pet');
 
 document.addEventListener('DOMContentLoaded', () => {
   initSidebar();
@@ -42,4 +43,5 @@ document.addEventListener('DOMContentLoaded', () => {
   initLeetcodeDaily();
   initGithubTrending();
   initTechDaily();
+  initPetTool();
 });

@@ -72,6 +72,10 @@
           <span class="icon">📊</span>
           <span class="label">Mock工具</span>
         </button>
+        <button class="tool-btn" data-tool="pet">
+          <span class="icon">🐶</span>
+          <span class="label">桌面宠物</span>
+        </button>
         <button class="tool-btn" data-tool="clock">
           <span class="icon">⏱️</span>
           <span class="label">打卡提醒</span>
@@ -860,6 +864,7 @@
             </div>
           </div>
           <div id="qrcode-decode" class="tab-content">
+            <p class="screenshot-tip">上传二维码图片后点击解析。解析结果可修改，再按原图配色、Logo 和底部文案重新生成。</p>
             <div class="file-upload">
               <label class="file-upload-btn" for="qrcode-upload">选择图片</label>
               <input type="file" id="qrcode-upload" accept="image/*" hidden />
@@ -867,11 +872,18 @@
             </div>
             <div id="qrcode-image-preview"></div>
             <div class="input-group">
-              <label>解析结果</label>
-              <input type="text" id="qrcode-result" readonly placeholder="解析结果" />
+              <label>解析结果（可修改）</label>
+              <textarea id="qrcode-result" rows="3" placeholder="解析结果会出现在这里，可直接编辑"></textarea>
             </div>
+            <p class="preview-hint" id="qrcode-decode-status"></p>
             <div class="action-bar">
               <button type="button" class="btn btn-primary" id="decode-qrcode">解析</button>
+              <button type="button" class="btn btn-primary" id="rebuild-qrcode">按原样式重新生成</button>
+              <button type="button" class="btn btn-secondary" id="download-restyle-qrcode">下载新二维码</button>
+            </div>
+            <div class="input-group">
+              <label>重新生成预览</label>
+              <div id="qrcode-restyle-preview"></div>
             </div>
           </div>
         </div>
@@ -1095,6 +1107,29 @@
         </div>
         <div class="panel-body">
           <div id="trending-list"><div class="news-loading">加载中...</div></div>
+        </div>
+      </div>
+
+      <div id="pet-tool" class="tool-panel">
+        <div class="panel-header">
+          <h2>🐶 桌面宠物</h2>
+        </div>
+        <div class="panel-body">
+          <div class="tool-form">
+            <p class="screenshot-tip">小狗面前有键盘和鼠标。你按哪个键，对应的键会亮起，爪子会敲到那个键上；点击时鼠标按键也会一起按下。直接拖动小狗就能移动位置。</p>
+            <div class="checkbox-group">
+              <label><input type="checkbox" id="pet-enabled" checked> 显示小狗</label>
+            </div>
+            <div class="input-group input-narrow">
+              <label>大小 <span id="pet-scale-label">100%</span></label>
+              <input type="range" id="pet-scale" min="70" max="160" value="100" />
+            </div>
+            <p class="screenshot-tip" id="pet-status">正在同步键盘和鼠标</p>
+            <div class="action-bar">
+              <button type="button" class="btn btn-secondary" id="pet-reset">重置位置</button>
+            </div>
+            <p class="screenshot-tip">拖动宠物窗口即可改变位置，位置会自动记住。</p>
+          </div>
         </div>
       </div>
 

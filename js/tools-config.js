@@ -11,6 +11,7 @@ const TOOLS = [
   { id: 'image', icon: '🖼️', label: '图片工具', shortcut: 'Ctrl+0' },
   { id: 'qrcode', icon: '📱', label: '二维码' },
   { id: 'mock', icon: '📊', label: 'Mock工具' },
+  { id: 'pet', icon: '🐶', label: '桌面宠物' },
   { id: 'news', icon: '📰', label: '新闻聚合' },
   { id: 'clock', icon: '⏱️', label: '打卡提醒' },
   { id: 'git-cheatsheet', icon: '🐙', label: 'Git速查' },

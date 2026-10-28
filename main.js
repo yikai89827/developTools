@@ -4,6 +4,7 @@ const fs = require('fs');
 const { execSync } = require('child_process');
 const axios = require('axios');
 const { TOOLS, SHORTCUT_MAP, SCREENSHOT_SHORTCUT } = require('./js/tools-config');
+const { setupPet, shutdownPet } = require('./js/pet/pet-manager');
 
 let mainWindow;
 let floatWindow;
@@ -509,6 +510,7 @@ app.whenReady().then(() => {
   initNewsReminder();
   // 开机自启动：读取配置，若用户已启用则写入系统注册表
   syncAutoLaunch();
+  setupPet();
 });
 
 app.on('will-quit', () => {
@@ -526,6 +528,7 @@ app.on('window-all-closed', () => {
 // before-quit 确保快捷键在退出前已注销，避免残留
 app.on('before-quit', () => {
   isQuiting = true;
+  shutdownPet();
 });
 
 app.on('activate', () => {
