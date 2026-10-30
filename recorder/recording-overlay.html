@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>选择录制区域</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      cursor: crosshair;
+      user-select: none;
+      background: transparent;
+      font: 13px/1.4 "Microsoft YaHei", sans-serif;
+    }
+    #mask { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.35); }
+
+    /* 悬停时自动识别的窗口轮廓 */
+    #hover {
+      position: fixed;
+      border: 2px dashed #6cb6ff;
+      background: rgba(108, 182, 255, 0.10);
+      display: none;
+      pointer-events: none;
+      z-index: 3;
+    }
+    #hover-label {
+      position: absolute;
+      top: -24px;
+      left: 0;
+      max-width: 100%;
+      padding: 2px 8px;
+      background: rgba(20, 26, 38, 0.92);
+      color: #cfe4ff;
+      border-radius: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* 已确定的选择框（可拖动/缩放） */
+    #sel {
+      position: fixed;
+      border: 2px solid #e5c07b;
+      background: rgba(229, 192, 123, 0.10);
+      display: none;
+      box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.45);
+      z-index: 4;
+      cursor: move;
+    }
+    .handle {
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      background: #e5c07b;
+      border: 1px solid #7a5b1e;
+      border-radius: 2px;
+      z-index: 6;
+    }
+    .h-nw { left: -7px; top: -7px; cursor: nwse-resize; }
+    .h-n  { left: 50%; top: -7px; transform: translateX(-50%); cursor: ns-resize; }
+    .h-ne { right: -7px; top: -7px; cursor: nesw-resize; }
+    .h-e  { right: -7px; top: 50%; transform: translateY(-50%); cursor: ew-resize; }
+    .h-se { right: -7px; bottom: -7px; cursor: nwse-resize; }
+    .h-s  { left: 50%; bottom: -7px; transform: translateX(-50%); cursor: ns-resize; }
+    .h-sw { left: -7px; bottom: -7px; cursor: nesw-resize; }
+    .h-w  { left: -7px; top: 50%; transform: translateY(-50%); cursor: ew-resize; }
+
+    #size-tag {
+      position: absolute;
+      top: -24px;
+      left: 0;
+      padding: 2px 8px;
+      background: rgba(20, 26, 38, 0.92);
+      color: #e5c07b;
+      border-radius: 4px;
+      white-space: nowrap;
+    }
+
+    /* 选择框工具条 */
+    #toolbar {
+      position: fixed;
+      display: none;
+      gap: 8px;
+      z-index: 7;
+      padding: 6px;
+      background: rgba(18, 21, 28, 0.95);
+      border: 1px solid #3a4150;
+      border-radius: 8px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+    }
+    #toolbar button {
+      padding: 6px 14px;
+      border-radius: 6px;
+      border: 1px solid transparent;
+      cursor: pointer;
+      font: 13px/1 "Microsoft YaHei", sans-serif;
+    }
+    .btn-primary { background: #e5c07b; color: #2a2110; border-color: #e5c07b; }
+    .btn-primary:hover { background: #f0cd8a; }
+    .btn-ghost { background: transparent; color: #cdd3de; border-color: #3a4150; }
+    .btn-ghost:hover { background: rgba(255, 255, 255, 0.08); }
+
+    #hint {
+      position: fixed;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 0.45rem 0.9rem;
+      background: rgba(18, 21, 28, 0.92);
+      color: #e8eaef;
+      border: 1px solid #3a4150;
+      border-radius: 8px;
+      z-index: 8;
+      max-width: 92vw;
+      text-align: center;
+      pointer-events: none;
+    }
+    #fullscreen-btn {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 8px 24px;
+      background: rgba(229, 192, 123, 0.2);
+      color: #e5c07b;
+      border: 1px solid #e5c07b;
+      border-radius: 6px;
+      font: 14px/1.4 "Microsoft YaHei", sans-serif;
+      cursor: pointer;
+      z-index: 8;
+    }
+    #fullscreen-btn:hover { background: rgba(229, 192, 123, 0.3); }
+  </style>
+</head>
+<body>
+  <div id="mask"></div>
+
+  <div id="hover"><div id="hover-label"></div></div>
+
+  <div id="sel">
+    <div id="size-tag"></div>
+    <div class="handle h-nw" data-dir="nw"></div>
+    <div class="handle h-n"  data-dir="n"></div>
+    <div class="handle h-ne" data-dir="ne"></div>
+    <div class="handle h-e"  data-dir="e"></div>
+    <div class="handle h-se" data-dir="se"></div>
+    <div class="handle h-s"  data-dir="s"></div>
+    <div class="handle h-sw" data-dir="sw"></div>
+    <div class="handle h-w"  data-dir="w"></div>
+  </div>
+
+  <div id="toolbar">
+    <button type="button" id="btn-confirm" class="btn-primary">✓ 录制此区域</button>
+    <button type="button" id="btn-reset" class="btn-ghost">重选</button>
+  </div>
+
+  <div id="hint">可在任意屏幕框选 · 移动鼠标识别窗口 · 单击选中 · 拖拽自定义 · Enter 确认 · Esc 取消</div>
+  <button type="button" id="fullscreen-btn">🎥 录制本屏</button>
+
+  <script>
+    const mask = document.getElementById('mask');
+    const hover = document.getElementById('hover');
+    const hoverLabel = document.getElementById('hover-label');
+    const sel = document.getElementById('sel');
+    const sizeTag = document.getElementById('size-tag');
+    const toolbar = document.getElementById('toolbar');
+    const hint = document.getElementById('hint');
+    const fullscreenBtn = document.getElementById('fullscreen-btn');
+    const displayId = Number(new URLSearchParams(location.search).get('displayId')) || 0;
+
+    let windows = [];
+    // 选择框状态：null 表示尚未选择
+    let rectState = null; // { left, top, width, height }
+    const MIN = 20;
+    const vw = () => window.innerWidth;
+    const vh = () => window.innerHeight;
+
+    // 加载本屏窗口列表用于悬停自动识别
+    (async () => {
+      try {
+        windows = (await window.recordingOverlayApi.getWindows(displayId)) || [];
+      } catch (_) {
+        windows = [];
+      }
+    })();
+
+    function windowAt(x, y) {
+      // 返回命中鼠标且面积最小的窗口轮廓（最贴合鼠标所在的那个区域）
+      let best = null;
+      let bestArea = Infinity;
+      for (const w of windows) {
+        if (x >= w.x && x <= w.x + w.width && y >= w.y && y <= w.y + w.height) {
+          const area = w.width * w.height;
+          if (area < bestArea) {
+            bestArea = area;
+            best = w;
+          }
+        }
+      }
+      return best;
+    }
+
+    function showHover(w) {
+      if (!w) { hover.style.display = 'none'; return; }
+      hover.style.display = 'block';
+      hover.style.left = w.x + 'px';
+      hover.style.top = w.y + 'px';
+      hover.style.width = w.width + 'px';
+      hover.style.height = w.height + 'px';
+      hoverLabel.textContent = w.title || '窗口';
+    }
+
+    function clamp(r) {
+      let { left, top, width, height } = r;
+      width = Math.max(MIN, width);
+      height = Math.max(MIN, height);
+      left = Math.max(0, Math.min(left, vw() - width));
+      top = Math.max(0, Math.min(top, vh() - height));
+      return { left, top, width, height };
+    }
+
+    function renderSel() {
+      if (!rectState) {
+        sel.style.display = 'none';
+        toolbar.style.display = 'none';
+        mask.style.background = 'rgba(0, 0, 0, 0.35)';
+        return;
+      }
+      // 有选择框时改由选择框的 box-shadow 负责压暗，避免叠加双重变暗
+      mask.style.background = 'transparent';
+      const r = rectState;
+      sel.style.display = 'block';
+      sel.style.left = r.left + 'px';
+      sel.style.top = r.top + 'px';
+      sel.style.width = r.width + 'px';
+      sel.style.height = r.height + 'px';
+      sizeTag.textContent = Math.round(r.width) + ' × ' + Math.round(r.height);
+
+      toolbar.style.display = 'flex';
+      const tbW = 200, tbH = 44;
+      let tbLeft = r.left + r.width - tbW;
+      tbLeft = Math.max(8, Math.min(tbLeft, vw() - tbW - 8));
+      let tbTop = r.top + r.height + 10;
+      if (tbTop + tbH > vh() - 8) tbTop = r.top - tbH - 10;
+      if (tbTop < 8) tbTop = 8;
+      toolbar.style.left = tbLeft + 'px';
+      toolbar.style.top = tbTop + 'px';
+    }
+
+    function setSelection(r) {
+      rectState = clamp(r);
+      hover.style.display = 'none';
+      renderSel();
+    }
+
+    function confirmSelection() {
+      if (!rectState) return;
+      const r = rectState;
+      if (r.width < 4 || r.height < 4) return;
+      window.recordingOverlayApi.selectRegion(
+        { x: Math.round(r.left), y: Math.round(r.top), width: Math.round(r.width), height: Math.round(r.height) },
+        false,
+        displayId
+      );
+    }
+
+    function resetSelection() {
+      rectState = null;
+      renderSel();
+    }
+
+    // ---- 交互：拖拽创建 / 单击选中窗口 ----
+    let mode = null; // 'create' | 'move' | 'resize'
+    let resizeDir = null;
+    let downX = 0, downY = 0;
+    let origRect = null;
+    let moved = false;
+
+    mask.addEventListener('mousemove', (e) => {
+      if (mode || rectState) return;
+      showHover(windowAt(e.clientX, e.clientY));
+    });
+
+    mask.addEventListener('mousedown', (e) => {
+      if (e.button !== 0) return;
+      mode = 'create';
+      moved = false;
+      downX = e.clientX;
+      downY = e.clientY;
+      hover.style.display = 'none';
+    });
+
+    // 在选择框内部按下 -> 移动
+    sel.addEventListener('mousedown', (e) => {
+      if (e.button !== 0) return;
+      if (e.target.classList.contains('handle')) {
+        mode = 'resize';
+        resizeDir = e.target.dataset.dir;
+      } else {
+        mode = 'move';
+      }
+      moved = false;
+      downX = e.clientX;
+      downY = e.clientY;
+      origRect = { ...rectState };
+      e.stopPropagation();
+      e.preventDefault();
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!mode) return;
+      const dx = e.clientX - downX;
+      const dy = e.clientY - downY;
+      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) moved = true;
+
+      if (mode === 'create') {
+        const left = Math.min(downX, e.clientX);
+        const top = Math.min(downY, e.clientY);
+        const width = Math.abs(e.clientX - downX);
+        const height = Math.abs(e.clientY - downY);
+        rectState = { left, top, width, height };
+        renderSel();
+      } else if (mode === 'move') {
+        rectState = clamp({ ...origRect, left: origRect.left + dx, top: origRect.top + dy });
+        renderSel();
+      } else if (mode === 'resize') {
+        let { left, top, width, height } = origRect;
+        const d = resizeDir;
+        if (d.includes('e')) width = origRect.width + dx;
+        if (d.includes('s')) height = origRect.height + dy;
+        if (d.includes('w')) { left = origRect.left + dx; width = origRect.width - dx; }
+        if (d.includes('n')) { top = origRect.top + dy; height = origRect.height - dy; }
+        if (width < MIN) { if (d.includes('w')) left = origRect.left + origRect.width - MIN; width = MIN; }
+        if (height < MIN) { if (d.includes('n')) top = origRect.top + origRect.height - MIN; height = MIN; }
+        rectState = { left, top, width, height };
+        renderSel();
+      }
+    });
+
+    window.addEventListener('mouseup', (e) => {
+      if (!mode) return;
+      const finishedMode = mode;
+      mode = null;
+
+      if (finishedMode === 'create' && !moved) {
+        // 单击：选中鼠标所在窗口
+        const w = windowAt(e.clientX, e.clientY);
+        if (w) {
+          setSelection({ left: w.x, top: w.y, width: w.width, height: w.height });
+        } else {
+          rectState = null;
+          renderSel();
+        }
+        return;
+      }
+
+      if (rectState) {
+        rectState = clamp(rectState);
+        if (rectState.width < 4 || rectState.height < 4) {
+          rectState = null;
+        }
+        renderSel();
+      }
+    });
+
+    document.getElementById('btn-confirm').addEventListener('click', (e) => {
+      e.stopPropagation();
+      confirmSelection();
+    });
+    document.getElementById('btn-reset').addEventListener('click', (e) => {
+      e.stopPropagation();
+      resetSelection();
+    });
+
+    fullscreenBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      window.recordingOverlayApi.selectRegion(null, true, displayId);
+    });
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        if (rectState) { resetSelection(); return; }
+        window.recordingOverlayApi.cancel();
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        confirmSelection();
+      }
+    });
+  </script>
+</body>
+</html>

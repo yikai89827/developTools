@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>摄像头</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: transparent;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+    /* 整窗可拖动 */
+    body {
+      -webkit-app-region: drag;
+      user-select: none;
+    }
+    .container {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      border-radius: 10px;
+      overflow: hidden;
+      background: #000;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+    }
+    video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transform: scaleX(-1); /* 镜像翻转，符合自拍习惯 */
+      display: block;
+    }
+    /* 顶部工具栏 */
+    .toolbar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 4px 6px;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.6), transparent);
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    .container:hover .toolbar {
+      opacity: 1;
+    }
+    .toolbar-left {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    /* 控件区域不可拖动，保证交互正常 */
+    .toolbar, .error-box, select, button {
+      -webkit-app-region: no-drag;
+    }
+    select {
+      background: rgba(0, 0, 0, 0.6);
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      border-radius: 4px;
+      padding: 2px 4px;
+      font-size: 11px;
+      max-width: 140px;
+      cursor: pointer;
+      outline: none;
+    }
+    .close-btn {
+      width: 22px;
+      height: 22px;
+      border: none;
+      border-radius: 50%;
+      background: rgba(255, 59, 48, 0.85);
+      color: #fff;
+      font-size: 14px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+      transition: background 0.2s;
+    }
+    .close-btn:hover {
+      background: rgba(255, 59, 48, 1);
+    }
+    /* 录制状态指示（小圆点） */
+    .rec-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #ff3b30;
+      animation: blink 1.5s infinite;
+    }
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+    /* 错误/提示信息 */
+    .error-box {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      color: #ccc;
+      font-size: 13px;
+      padding: 12px;
+      max-width: 90%;
+    }
+    .error-box .icon {
+      font-size: 32px;
+      margin-bottom: 8px;
+    }
+    /* 缩放提示（右下角） */
+    .resize-hint {
+      position: absolute;
+      bottom: 0;
+      right: 0;
+      width: 16px;
+      height: 16px;
+      cursor: nwse-resize;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    .container:hover .resize-hint {
+      opacity: 0.5;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <video id="camera-video" autoplay muted playsinline></video>
+    <div class="toolbar">
+      <div class="toolbar-left">
+        <span class="rec-dot" id="rec-dot" style="display:none;"></span>
+        <select id="device-select" title="选择摄像头"></select>
+      </div>
+      <button class="close-btn" id="close-btn" title="关闭">×</button>
+    </div>
+    <div class="error-box" id="error-box" style="display:none;">
+      <div class="icon">📷</div>
+      <div id="error-msg">无法访问摄像头</div>
+    </div>
+    <div class="resize-hint"></div>
+  </div>
+
+  <script>
+    const videoEl = document.getElementById('camera-video');
+    const deviceSelect = document.getElementById('device-select');
+    const closeBtn = document.getElementById('close-btn');
+    const errorBox = document.getElementById('error-box');
+    const errorMsg = document.getElementById('error-msg');
+    const recDot = document.getElementById('rec-dot');
+
+    let currentStream = null;
+    let currentDeviceId = '';
+
+    function showError(msg) {
+      errorMsg.textContent = msg;
+      errorBox.style.display = 'block';
+      videoEl.style.display = 'none';
+    }
+
+    function hideError() {
+      errorBox.style.display = 'none';
+      videoEl.style.display = 'block';
+    }
+
+    function stopStream() {
+      if (currentStream) {
+        currentStream.getTracks().forEach((t) => t.stop());
+        currentStream = null;
+      }
+    }
+
+    async function startCamera(deviceId) {
+      stopStream();
+      const constraints = {
+        video: deviceId
+          ? { deviceId: { exact: deviceId }, width: { ideal: 1280 }, height: { ideal: 720 } }
+          : { width: { ideal: 1280 }, height: { ideal: 720 } },
+        audio: false,
+      };
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        currentStream = stream;
+        videoEl.srcObject = stream;
+        hideError();
+        // 更新设备列表（需要先获取权限后才能枚举到标签）
+        await enumerateDevices();
+      } catch (e) {
+        console.error('[camera] getUserMedia 失败:', e.name, e.message);
+        if (e.name === 'NotAllowedError') {
+          showError('摄像头权限被拒绝，请在系统设置中允许访问');
+        } else if (e.name === 'NotFoundError' || e.name === 'DevicesNotFoundError') {
+          showError('未检测到摄像头设备');
+        } else if (e.name === 'NotReadableError') {
+          showError('摄像头被其他程序占用');
+        } else {
+          showError('无法访问摄像头: ' + (e.message || e.name));
+        }
+      }
+    }
+
+    async function enumerateDevices() {
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoInputs = devices.filter((d) => d.kind === 'videoinput');
+        deviceSelect.innerHTML = '';
+        videoInputs.forEach((d, i) => {
+          const opt = document.createElement('option');
+          opt.value = d.deviceId;
+          opt.textContent = d.label || ('摄像头 ' + (i + 1));
+          deviceSelect.appendChild(opt);
+        });
+        if (currentDeviceId) {
+          deviceSelect.value = currentDeviceId;
+        } else if (videoInputs.length > 0) {
+          currentDeviceId = videoInputs[0].deviceId;
+          deviceSelect.value = currentDeviceId;
+        }
+      } catch (e) {
+        console.warn('[camera] 枚举设备失败:', e.message);
+      }
+    }
+
+    deviceSelect.addEventListener('change', async (e) => {
+      currentDeviceId = e.target.value;
+      await startCamera(currentDeviceId);
+    });
+
+    closeBtn.addEventListener('click', () => {
+      stopStream();
+      window.close();
+    });
+
+    // 设备变更（热插拔）时重新枚举
+    if (navigator.mediaDevices && navigator.mediaDevices.addEventListener) {
+      navigator.mediaDevices.addEventListener('devicechange', () => {
+        enumerateDevices();
+      });
+    }
+
+    // 启动摄像头
+    startCamera('');
+  </script>
+</body>
+</html>

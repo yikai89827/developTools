@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: rgba(255, 59, 48, 0.95);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      color: white;
+      user-select: none;
+      height: 100vh;
+      cursor: default;
+      overflow: hidden;
+    }
+    .recording-dot {
+      width: 8px;
+      height: 8px;
+      background: white;
+      border-radius: 50%;
+      animation: blink 1s infinite;
+      flex-shrink: 0;
+    }
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+    .recording-text {
+      font-size: 12px;
+      font-weight: 500;
+    }
+    .recording-time {
+      font-size: 12px;
+      font-family: 'SF Mono', Monaco, monospace;
+    }
+    .stop-btn {
+      padding: 2px 10px;
+      background: rgba(255, 255, 255, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      border-radius: 4px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: background 0.2s;
+      margin-left: 4px;
+    }
+    .stop-btn:hover {
+      background: rgba(255, 255, 255, 0.35);
+    }
+    .drag-handle {
+      width: 16px;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: grab;
+      padding-right: 4px;
+    }
+    .drag-handle:active {
+      cursor: grabbing;
+    }
+    .drag-dots {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .drag-dots span {
+      width: 3px;
+      height: 3px;
+      background: rgba(255, 255, 255, 0.6);
+      border-radius: 50%;
+    }
+    .drag-dots span:nth-child(2) {
+      opacity: 0.4;
+    }
+  </style>
+</head>
+<body>
+  <div class="drag-handle" id="drag-handle">
+    <div class="drag-dots">
+      <span></span>
+      <span></span>
+    </div>
+  </div>
+  <div class="recording-dot"></div>
+  <span class="recording-text">录制中</span>
+  <span class="recording-time" id="recording-time">00:00</span>
+  <button class="stop-btn" id="stop-btn">停止</button>
+
+  <script>
+    const timeEl = document.getElementById('recording-time');
+    const stopBtn = document.getElementById('stop-btn');
+    const dragHandle = document.getElementById('drag-handle');
+
+    function formatTime(seconds) {
+      const mins = Math.floor(seconds / 60);
+      const secs = seconds % 60;
+      return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    }
+
+    if (window.electronAPI) {
+      window.electronAPI.onRecordingTime((_, data) => {
+        timeEl.textContent = formatTime(data.elapsed);
+      });
+
+      stopBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        window.electronAPI.stopRecording();
+      });
+
+      // 拖动功能
+      let isDragging = false;
+      let dragStartX = 0;
+      let dragStartY = 0;
+      let windowStartX = 0;
+      let windowStartY = 0;
+
+      dragHandle.addEventListener('mousedown', async (e) => {
+        isDragging = true;
+        dragStartX = e.screenX;
+        dragStartY = e.screenY;
+        
+        try {
+          const win = await window.electronAPI.getWindowPosition();
+          windowStartX = win.x;
+          windowStartY = win.y;
+        } catch (err) {
+          isDragging = false;
+        }
+        
+        e.preventDefault();
+      });
+
+      document.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        
+        const deltaX = e.screenX - dragStartX;
+        const deltaY = e.screenY - dragStartY;
+        
+        const newX = windowStartX + deltaX;
+        const newY = windowStartY + deltaY;
+        
+        if (Number.isFinite(newX) && Number.isFinite(newY)) {
+          window.electronAPI.setWindowPosition(newX, newY);
+        }
+      });
+
+      document.addEventListener('mouseup', () => {
+        isDragging = false;
+      });
+
+      // 防止拖动手柄时选中文字
+      dragHandle.addEventListener('dragstart', (e) => {
+        e.preventDefault();
+      });
+    }
+  </script>
+</body>
+</html>

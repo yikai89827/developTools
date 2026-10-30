@@ -2398,3 +2398,256 @@ input[type="color"] {
   color: var(--text-secondary);
 }
 
+
+/* ©¤©¤ ÆÁÄ»Â¼ÖÆ ©¤©¤ */
+:root {
+  --recorder-surface: var(--bg-tertiary);
+  --recorder-card: var(--bg-secondary);
+  --recorder-border: var(--border-color);
+  --recorder-muted: var(--text-muted);
+  --recorder-success: #3fb950;
+  --recorder-danger: #f85149;
+}
+
+.hidden { display: none !important; }
+
+.btn-danger {
+  background: linear-gradient(135deg, #f85149 0%, #da3633 100%);
+  color: #fff;
+  border: none;
+}
+.btn-danger:hover { filter: brightness(1.08); }
+
+.recorder-panel-body {
+  display: flex;
+  flex-direction: column;
+  height: calc(100% - 56px);
+  overflow: hidden;
+  padding: 0 !important;
+}
+
+.recorder-main {
+  display: flex;
+  gap: 16px;
+  padding: 16px;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.recorder-left-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  min-height: 0;
+}
+
+.recorder-settings-panel {
+  background: var(--recorder-card);
+  border-radius: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--recorder-border);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 20px;
+  row-gap: 10px;
+  flex-shrink: 0;
+}
+
+.recorder-setting-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.recorder-setting-row.is-inline {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.recorder-setting-label {
+  font-size: 12px;
+  color: var(--recorder-muted);
+}
+.recorder-setting-select,
+.recorder-setting-input {
+  background: var(--bg-primary);
+  border: 1px solid var(--recorder-border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  padding: 6px 10px;
+  font-size: 13px;
+  width: 100%;
+}
+.recorder-path-input-group {
+  display: flex;
+  gap: 8px;
+}
+.recorder-path-input-group .recorder-setting-input { flex: 1; min-width: 0; }
+.recorder-checkbox-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-primary);
+  cursor: pointer;
+  user-select: none;
+  line-height: 1.45;
+}
+.recorder-checkbox-label input[type="checkbox"] {
+  margin-top: 2px;
+  accent-color: var(--accent);
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+
+.recorder-status {
+  font-size: 13px;
+  font-weight: 600;
+  margin-right: 10px;
+}
+.recorder-status.ready { color: var(--recorder-success); }
+.recorder-status.recording {
+  color: var(--recorder-danger);
+  animation: recorder-pulse 1s infinite;
+}
+@keyframes recorder-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+.recorder-time {
+  font-family: 'Cascadia Code', 'SF Mono', Consolas, monospace;
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.recorder-actions {
+  display: flex;
+  gap: 10px;
+  grid-column: 1 / -1;
+  margin-top: 2px;
+}
+.recorder-actions--inline {
+  grid-column: 1 / -1;
+}
+
+.recorder-preview-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: var(--recorder-card);
+  border-radius: 12px;
+  padding: 12px;
+  border: 1px solid var(--recorder-border);
+  min-height: 0;
+  gap: 6px;
+}
+.recorder-video-container {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 220px;
+  background: #000;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.recorder-video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: none;
+}
+.recorder-video.visible { display: block; }
+.recorder-video-placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--recorder-muted);
+}
+.recorder-video-placeholder.hidden { display: none; }
+.recorder-video-placeholder-icon { font-size: 48px; margin-bottom: 12px; }
+.recorder-video-placeholder p { margin: 0; font-size: 13px; }
+
+.recorder-preview-info {
+  padding: 4px 8px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--recorder-muted);
+  flex-shrink: 0;
+  background: var(--bg-primary);
+  border-radius: 6px;
+  border: 1px solid var(--border-light);
+}
+.recorder-preview-filename-label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 11px;
+  opacity: 0.85;
+}
+.recorder-preview-filename {
+  display: block;
+  font-size: 12px;
+  color: var(--text-primary);
+  word-break: break-all;
+  user-select: all;
+}
+
+.recorder-info-panel {
+  width: 240px;
+  flex-shrink: 0;
+  background: var(--recorder-card);
+  border-radius: 12px;
+  padding: 16px;
+  border: 1px solid var(--recorder-border);
+  overflow-y: auto;
+}
+.recorder-info-panel h3 {
+  margin: 0 0 12px;
+  font-size: 14px;
+  color: var(--text-primary);
+}
+.recorder-info-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.recorder-info-list li {
+  padding: 8px 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border-light);
+  line-height: 1.45;
+}
+.recorder-info-list li:last-child { border-bottom: none; }
+
+.recorder-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 28px;
+  transform: translateX(-50%) translateY(20px);
+  background: rgba(22, 27, 34, 0.95);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  padding: 10px 16px;
+  border-radius: 10px;
+  font-size: 13px;
+  z-index: 9999;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s, transform 0.2s;
+  max-width: 80vw;
+}
+.recorder-toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+.recorder-toast[data-type="success"] { border-color: var(--recorder-success); }
+.recorder-toast[data-type="err"],
+.recorder-toast[data-type="warn"] { border-color: var(--recorder-danger); }

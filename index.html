@@ -19,50 +19,58 @@
           <span class="label">生成器</span>
           <span class="shortcut">Ctrl+1</span>
         </button>
+        <button class="tool-btn" data-tool="recorder">
+          <span class="icon">📹</span>
+          <span class="label">屏幕录制</span>
+          <span class="shortcut">Ctrl+2</span>
+        </button>
+        <button class="tool-btn" data-tool="trending">
+          <span class="icon">🔥</span>
+          <span class="label">GitHub趋势</span>
+          <span class="shortcut">Ctrl+3</span>
+        </button>
         <button class="tool-btn" data-tool="color">
           <span class="icon">🎨</span>
           <span class="label">颜色工具</span>
-          <span class="shortcut">Ctrl+2</span>
+          <span class="shortcut">Ctrl+4</span>
         </button>
         <button class="tool-btn" data-tool="json">
           <span class="icon">📄</span>
           <span class="label">JSON工具</span>
-          <span class="shortcut">Ctrl+3</span>
+          <span class="shortcut">Ctrl+5</span>
         </button>
         <button class="tool-btn" data-tool="crypto">
           <span class="icon">🔐</span>
           <span class="label">加密工具</span>
-          <span class="shortcut">Ctrl+4</span>
+          <span class="shortcut">Ctrl+6</span>
         </button>
         <button class="tool-btn" data-tool="code">
           <span class="icon">💻</span>
           <span class="label">代码工具</span>
-          <span class="shortcut">Ctrl+5</span>
+          <span class="shortcut">Ctrl+7</span>
         </button>
         <button class="tool-btn" data-tool="http">
           <span class="icon">🌐</span>
           <span class="label">HTTP工具</span>
-          <span class="shortcut">Ctrl+6</span>
+          <span class="shortcut">Ctrl+8</span>
         </button>
         <button class="tool-btn" data-tool="regex">
           <span class="icon">🔍</span>
           <span class="label">正则工具</span>
-          <span class="shortcut">Ctrl+7</span>
+          <span class="shortcut">Ctrl+9</span>
         </button>
         <button class="tool-btn" data-tool="time">
           <span class="icon">⏰</span>
           <span class="label">时间转换</span>
-          <span class="shortcut">Ctrl+8</span>
+          <span class="shortcut">Ctrl+0</span>
         </button>
         <button class="tool-btn" data-tool="base">
           <span class="icon">🔢</span>
           <span class="label">进制转换</span>
-          <span class="shortcut">Ctrl+9</span>
         </button>
         <button class="tool-btn" data-tool="image">
           <span class="icon">🖼️</span>
           <span class="label">图片工具</span>
-          <span class="shortcut">Ctrl+0</span>
         </button>
         <button class="tool-btn" data-tool="qrcode">
           <span class="icon">📱</span>
@@ -99,10 +107,6 @@
         <button class="tool-btn" data-tool="leetcode">
           <span class="icon">📝</span>
           <span class="label">每日10题</span>
-        </button>
-        <button class="tool-btn" data-tool="trending">
-          <span class="icon">🔥</span>
-          <span class="label">GitHub趋势</span>
         </button>
         <button class="tool-btn" data-tool="tech-daily">
           <span class="icon">💡</span>
@@ -1103,6 +1107,9 @@
               <option value="monthly">本月</option>
             </select>
             <button class="btn btn-secondary" id="trending-refresh">🔄 刷新</button>
+            <button class="btn btn-primary" id="trending-play-reel" title="打开竖屏 AI 趋势动画（录屏用不含按钮）">▶️ AI动画</button>
+            <button class="btn btn-secondary" id="trending-reel-replay" title="重播竖屏动画">🔁 重播</button>
+            <button class="btn btn-secondary" id="trending-reel-pause" title="暂停/继续竖屏动画">⏸️ 暂停</button>
           </div>
         </div>
         <div class="panel-body">
@@ -1141,6 +1148,106 @@
         </div>
         <div class="panel-body">
           <div id="tech-daily-content"><div class="news-loading">加载中...</div></div>
+        </div>
+      </div>
+
+      <!-- 屏幕录制 -->
+      <div id="recorder-tool" class="tool-panel">
+        <div class="panel-header">
+          <h2>📹 屏幕录制</h2>
+          <div class="algo-controls">
+            <span id="recorder-status" class="recorder-status ready">就绪</span>
+            <span id="recorder-time" class="recorder-time">00:00</span>
+          </div>
+        </div>
+        <div class="panel-body recorder-panel-body">
+          <div class="recorder-main">
+            <div class="recorder-left-panel">
+              <div class="recorder-settings-panel">
+                <div class="recorder-setting-row">
+                  <label class="recorder-setting-label">音频来源</label>
+                  <select id="recorder-audio-source" class="recorder-setting-select">
+                    <option value="both">麦克风 + 系统音频</option>
+                    <option value="microphone">仅麦克风</option>
+                    <option value="system">仅系统音频</option>
+                    <option value="none">无音频</option>
+                  </select>
+                </div>
+                <div class="recorder-setting-row">
+                  <label class="recorder-setting-label">视频保存路径</label>
+                  <div class="recorder-path-input-group">
+                    <input type="text" id="recorder-video-path" class="recorder-setting-input" readonly />
+                    <button type="button" id="btn-recorder-select-path" class="btn btn-secondary btn-sm">浏览</button>
+                  </div>
+                </div>
+                <div class="recorder-setting-row">
+                  <label class="recorder-setting-label">文件名前缀</label>
+                  <input type="text" id="recorder-file-name" class="recorder-setting-input" value="recording" />
+                </div>
+                <div class="recorder-setting-row">
+                  <label class="recorder-setting-label">录制画质</label>
+                  <select id="recorder-quality" class="recorder-setting-select">
+                    <option value="4k">4K (2160p)</option>
+                    <option value="2k">2K (1440p)</option>
+                    <option value="uhd" selected>超清 (1080p)</option>
+                    <option value="hd">高清 (720p)</option>
+                    <option value="sd">标清 (480p)</option>
+                  </select>
+                </div>
+                <div class="recorder-setting-row is-inline">
+                  <label class="recorder-checkbox-label">
+                    <input type="checkbox" id="recorder-enable-camera" />
+                    <span>启用摄像头画面（录制时右下角悬浮窗）</span>
+                  </label>
+                  <button type="button" id="btn-recorder-camera-preview" class="btn btn-secondary btn-sm">摄像头预览</button>
+                </div>
+                <div class="recorder-setting-row is-inline">
+                  <label class="recorder-checkbox-label">
+                    <input type="checkbox" id="recorder-enable-watermark" />
+                    <span>添加动态水印</span>
+                  </label>
+                  <label class="recorder-checkbox-label">
+                    <input type="checkbox" id="recorder-hide-app" checked />
+                    <span>录制时隐藏本应用</span>
+                  </label>
+                </div>
+                <div class="recorder-setting-row">
+                  <label class="recorder-setting-label" for="recorder-watermark-text">水印文字</label>
+                  <input type="text" id="recorder-watermark-text" class="recorder-setting-input" value="豆豆开发者工具" placeholder="输入水印文字" maxlength="50" />
+                </div>
+                <div class="recorder-actions recorder-actions--inline">
+                  <button type="button" id="btn-recorder-start" class="btn btn-primary">开始录制</button>
+                  <button type="button" id="btn-recorder-stop" class="btn btn-danger hidden">停止录制</button>
+                </div>
+              </div>
+              <div class="recorder-preview-panel">
+                <div class="recorder-video-container">
+                  <video id="recorder-preview-video" class="recorder-video" controls muted playsinline></video>
+                  <div class="recorder-video-placeholder" id="recorder-video-placeholder">
+                    <div class="recorder-video-placeholder-icon">🎬</div>
+                    <p>录制完成后将在此预览</p>
+                  </div>
+                </div>
+                <div class="recorder-preview-info">
+                  <span class="recorder-preview-filename-label">文件名</span>
+                  <span id="recorder-preview-filename" class="recorder-preview-filename"></span>
+                </div>
+              </div>
+            </div>
+            <div class="recorder-info-panel">
+              <h3>使用说明</h3>
+              <ul class="recorder-info-list">
+                <li>📹 点击「开始录制」后，会先选择录制区域</li>
+                <li>🖱️ 支持选择特定区域或录制整个屏幕</li>
+                <li>🎬 可选 4K/2K/超清/高清/标清（不会超分）</li>
+                <li>📷 可启用摄像头悬浮窗，可拖动大小和位置</li>
+                <li>💧 可选开启动态水印并自定义文字</li>
+                <li>👁️ 可配置录制时是否隐藏本应用</li>
+                <li>🔊 系统音频需 Windows 开启「立体声混音」</li>
+                <li>💾 完成后按日期目录自动保存 MP4</li>
+              </ul>
+            </div>
+          </div>
         </div>
       </div>
     </div>

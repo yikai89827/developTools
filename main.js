@@ -5,6 +5,7 @@ const { execSync } = require('child_process');
 const axios = require('axios');
 const { TOOLS, SHORTCUT_MAP, SCREENSHOT_SHORTCUT } = require('./js/tools-config');
 const { setupPet, shutdownPet } = require('./js/pet/pet-manager');
+const { registerIpcHandlers: registerRecorderHandlers, setMainWindow: setRecorderMainWindow } = require('./js/recorder/screenRecorder');
 
 let mainWindow;
 let floatWindow;
@@ -39,6 +40,8 @@ let newsWebViewWindows = [];
 let newsReaderWindow = null;
 let newsReaderReady = false;
 let newsReaderQueue = [];
+let trendingReelWindow = null;
+let trendingReelPayload = null;
 
 const NEWS_CONFIG_FILE = path.join(
   (process.env.APPDATA || process.env.HOME || '.'),
@@ -366,6 +369,7 @@ function createWindow() {
   });
 
   mainWindow.loadFile('index.html');
+  setRecorderMainWindow(mainWindow);
 
   // 最小化 → 隐藏到托盘，不在任务栏显示
   mainWindow.on('minimize', (event) => {
@@ -498,6 +502,16 @@ app.whenReady().then(() => {
     }).catch(() => callback({}));
   });
 
+  // 摄像头悬浮窗等媒体权限（录屏功能）
+  session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback) => {
+    if (permission === 'media' || permission === 'mediaKeySystem' || permission === 'display-capture') {
+      callback(true);
+      return;
+    }
+    callback(true);
+  });
+
+  registerRecorderHandlers();
   createWindow();
   createFloatWindow();
   createTray();
@@ -1595,49 +1609,330 @@ const TRENDING_FALLBACK = [
   { author: 'facebook', name: 'react', description: 'The library for web and native user interfaces.', language: 'JavaScript', languageColor: '#f1e05a', stars: 226000, forks: 46000, starsToday: 70, url: 'https://github.com/facebook/react' },
 ];
 
+const AI_TRENDING_FALLBACK = [
+  { author: 'anthropics', name: 'claude-code', description: 'Claude agentic coding tool', descriptionZh: 'Claude 智能编程代理', icon: '🧠', language: 'TypeScript', languageColor: '#3178c6', stars: 45000, forks: 3200, starsToday: 1200, url: 'https://github.com/anthropics/claude-code' },
+  { author: 'openai', name: 'codex', description: 'Lightweight coding agent', descriptionZh: '轻量级 AI 编程助手', icon: '⚙️', language: 'Rust', languageColor: '#dea584', stars: 38000, forks: 4100, starsToday: 980, url: 'https://github.com/openai/codex' },
+  { author: 'ggerganov', name: 'llama.cpp', description: 'LLM inference in C/C++', descriptionZh: '本地跑大模型推理', icon: '🚀', language: 'C++', languageColor: '#f34b7d', stars: 78000, forks: 11200, starsToday: 420, url: 'https://github.com/ggerganov/llama.cpp' },
+  { author: 'ollama', name: 'ollama', description: 'Get up and running with LLMs locally', descriptionZh: '一键本地部署大模型', icon: '🦙', language: 'Go', languageColor: '#00ADD8', stars: 120000, forks: 9800, starsToday: 650, url: 'https://github.com/ollama/ollama' },
+  { author: 'microsoft', name: 'autogen', description: 'Multi-agent conversation framework', descriptionZh: '多智能体协作框架', icon: '🧩', language: 'Python', languageColor: '#3572A5', stars: 42000, forks: 6200, starsToday: 310, url: 'https://github.com/microsoft/autogen' },
+  { author: 'langchain-ai', name: 'langchain', description: 'Build context-aware reasoning apps', descriptionZh: '搭 LLM 应用的胶水层', icon: '🔗', language: 'Python', languageColor: '#3572A5', stars: 105000, forks: 17000, starsToday: 280, url: 'https://github.com/langchain-ai/langchain' },
+  { author: 'comfyanonymous', name: 'ComfyUI', description: 'Powerful modular diffusion GUI', descriptionZh: '可视化 AI 绘图工作流', icon: '🎨', language: 'Python', languageColor: '#3572A5', stars: 78000, forks: 8200, starsToday: 540, url: 'https://github.com/comfyanonymous/ComfyUI' },
+  { author: 'open-webui', name: 'open-webui', description: 'User-friendly AI interface', descriptionZh: '好看的本地 AI 聊天界面', icon: '💬', language: 'JavaScript', languageColor: '#f1e05a', stars: 95000, forks: 12000, starsToday: 720, url: 'https://github.com/open-webui/open-webui' },
+  { author: 'vllm-project', name: 'vllm', description: 'High-throughput LLM serving', descriptionZh: '高吞吐大模型推理引擎', icon: '⚡', language: 'Python', languageColor: '#3572A5', stars: 50000, forks: 7800, starsToday: 390, url: 'https://github.com/vllm-project/vllm' },
+  { author: 'Aider-AI', name: 'aider', description: 'AI pair programming in your terminal', descriptionZh: '终端里的 AI 结对编程', icon: '💻', language: 'Python', languageColor: '#3572A5', stars: 32000, forks: 3000, starsToday: 260, url: 'https://github.com/Aider-AI/aider' },
+];
+
+const AI_KW = /\b(ai|llm|gpt|claude|gemini|ollama|langchain|agent|rag|transformer|diffusion|stable[\s-]?diffusion|whisper|tts|stt|embedding|vector|chatbot|copilot|openai|anthropic|huggingface|推理|大模型|智能体)\b/i;
+
+function pickAiIcon(name, desc) {
+  const t = `${name} ${desc}`.toLowerCase();
+  if (/video|film|montage|movie|剪辑|视频/.test(t)) return '🎬';
+  if (/image|vision|diffusion|comfy|draw|画|图像|绘图/.test(t)) return '🎨';
+  if (/voice|audio|speech|whisper|tts|语音|听/.test(t)) return '🎙️';
+  if (/memory|mem|记忆/.test(t)) return '🧬';
+  if (/agent|skill|auto|agentic|智能体|代理/.test(t)) return '🧠';
+  if (/chat|webui|ui|界面|对话/.test(t)) return '💬';
+  if (/serve|vllm|inference|engine|推理|部署/.test(t)) return '⚡';
+  if (/code|coder|编程|代码/.test(t)) return '💻';
+  if (/rag|search|检索|知识库/.test(t)) return '📚';
+  if (/security|sre|ops|运维|安全/.test(t)) return '🛡️';
+  if (/cad|3d|零件/.test(t)) return '🛠️';
+  if (/free|开源免费/.test(t)) return '🆓';
+  if (/plugin|插件/.test(t)) return '🔌';
+  return '🚀';
+}
+
+function toChineseDesc(name, desc) {
+  const raw = String(desc || '').replace(/\s+/g, ' ').trim();
+  if (/[\u4e00-\u9fff]/.test(raw)) return raw.slice(0, 22);
+
+  const n = String(name || '').toLowerCase();
+  const t = `${n} ${raw}`.toLowerCase();
+
+  // 先按项目名特判，避免多个仓库落成同一句
+  if (/impeccable/.test(n)) return '前端设计规范交给 AI';
+  if (/hindsight/.test(n)) return '给 Agent 装长期记忆';
+  if (/openbot|open.?bot/.test(n)) return '开源机器人 / Agent 框架';
+  if (/claude.?seo/.test(n)) return 'Claude SEO 内容助手';
+  if (/hermes/.test(n)) return 'Hermes Agent 编排工具';
+  if (/openviking/.test(n)) return '开源 Viking 风格 AI 工具';
+  if (/mempalace|mem0|memory/.test(n)) return 'AI 记忆层 / 长期记忆';
+  if (/^skills?$|skill/.test(n) && /claude|agent|ai/.test(t)) return 'AI 可插拔 Skills 技能包';
+  if (/macro/.test(n)) return 'AI 宏指令 / 工作流自动化';
+
+  if (/video|montage|剪辑/.test(t)) return '一句话做完一支视频';
+  if (/diagram|图表|画图/.test(t)) return '教 AI 画架构图';
+  if (/reverse|逆向|decompile/.test(t)) return '逆向分析任意 App';
+  if (/cad|零件|加工/.test(t)) return '一句话做出可加工零件';
+  if (/sre|oncall|排障|运维/.test(t)) return 'AI 帮你值夜班排障';
+  if (/comfy|diffusion|stable.?diffusion|绘图|image gen/.test(t)) return '可视化 AI 绘图工作流';
+  if (/ollama/.test(t)) return '一键本地部署大模型';
+  if (/llama\.?cpp|gguf/.test(t)) return '本地跑大模型推理';
+  if (/vllm|high.?throughput|serving/.test(t)) return '高吞吐大模型推理引擎';
+  if (/webui|chat.?ui|界面/.test(t)) return '好看的本地 AI 聊天界面';
+  if (/autogen|multi.?agent|多智能体/.test(t)) return '多智能体协作框架';
+  if (/langchain|langgraph/.test(t)) return '搭 LLM 应用的胶水层';
+  if (/rag|retrieval|knowledge/.test(t)) return '给 AI 接上私有知识库';
+  if (/whisper|speech.?to.?text|stt/.test(t)) return '语音一键转文字';
+  if (/tts|text.?to.?speech/.test(t)) return '文字一键变语音';
+  if (/seo/.test(t)) return 'AI SEO / 内容优化';
+  if (/memory|长期记忆|mem\b/.test(t)) return '给 AI 装长期记忆';
+  if (/aider|pair.?program|coding.?agent|code.?agent|编程助手|copilot/.test(t)) return 'AI 结对编程助手';
+  if (/mcp/.test(t)) return 'MCP 工具协议扩展';
+  if (/skill|插件|plugin/.test(t)) return '给 AI 加可插拔技能';
+  if (/agent/.test(t)) return '自主执行任务的 AI Agent';
+  if (/embedding|vector/.test(t)) return '向量检索 / Embedding';
+  if (/fine.?tun|lora|训练/.test(t)) return '大模型微调工具';
+  if (/eval|benchmark|评测/.test(t)) return '大模型评测基准';
+  if (/ocr/.test(t)) return 'AI 识别图片里的文字';
+  if (raw) {
+    const cut = raw.replace(/^(a|an|the)\s+/i, '').trim();
+    if (/local/i.test(cut) && /llm|model/i.test(cut)) return '本地运行大模型';
+    if (/framework/i.test(cut)) return 'AI 开发框架';
+    if (/library|sdk/i.test(cut)) return 'AI 开发库 / SDK';
+    if (/cli|terminal|command/i.test(cut)) return '命令行 AI 工具';
+    if (/gui|interface/i.test(cut)) return 'AI 图形界面工具';
+    // 用描述前半句做短标签，保证每条不完全一样
+    const brief = cut.split(/[.\-–—|]/)[0].trim().slice(0, 28);
+    return brief || '热门 AI 开源项目';
+  }
+  return '热门 AI 开源项目';
+}
+
+function enrichAiItem(repo) {
+  const descriptionZh = toChineseDesc(repo.name, repo.description);
+  return {
+    ...repo,
+    descriptionZh,
+    icon: repo.icon || pickAiIcon(repo.name, `${repo.description || ''} ${descriptionZh}`),
+  };
+}
+
+function parseCountAfterLink(block, linkPart) {
+  // 先去掉 SVG，避免匹配到 width="16" 之类导致全是 16★
+  const cleaned = String(block || '').replace(/<svg[\s\S]*?<\/svg>/gi, ' ');
+  const re = new RegExp(`${linkPart}[^>]*>[\\s\\S]*?([\\d,]+)`);
+  const m = cleaned.match(re);
+  return parseInt((m && m[1] ? m[1] : '0').replace(/,/g, ''), 10) || 0;
+}
+
+function parseTrendingHtml(html) {
+  const repos = [];
+  const blockRe = /<article[^>]*class="[^"]*(?:Box-row|trending-item)[^"]*"[^>]*>([\s\S]*?)<\/article>/g;
+  let m;
+  while ((m = blockRe.exec(html)) && repos.length < 25) {
+    const block = m[1];
+    const fullMatch = block.match(/href="\/([^"\/]+)\/([^"\/]+)"/);
+    const author = fullMatch ? fullMatch[1] : '';
+    const name = fullMatch ? fullMatch[2] : '';
+    if (!author || !name || author === 'sponsors' || author === 'topics') continue;
+    const desc = (block.match(/<p[^>]*>([\s\S]*?)<\/p>/) || [])[1] || '';
+    const langMatch = block.match(/itemprop="programmingLanguage">([^<]+)</);
+    const langColor = (block.match(/<svg[\s\S]*?<circle[^>]*fill="([^"]+)"/) || [])[1];
+    const starsToday = parseInt((block.match(/([\d,]+)\s*stars?\s*(?:today|this week|this month)/i) || [])[1]?.replace(/,/g, '') || '0', 10);
+    let totalStars = parseCountAfterLink(block, '\\/stargazers');
+    // 总星不应小于今日新增；否则视为解析失败
+    if (starsToday && totalStars && totalStars < starsToday) totalStars = 0;
+    const forks = parseCountAfterLink(block, '\\/forks');
+    repos.push({
+      author,
+      name,
+      description: desc.replace(/<[^>]+>/g, '').trim(),
+      language: langMatch ? langMatch[1].trim() : '',
+      languageColor: langColor || '',
+      stars: totalStars || 0,
+      forks: forks || 0,
+      starsToday: starsToday || 0,
+      url: `https://github.com/${author}/${name}`,
+    });
+  }
+  return repos;
+}
+
+async function enrichRepoStars(list) {
+  const out = [];
+  for (const repo of list) {
+    const need = !repo.stars || (repo.starsToday && repo.stars < repo.starsToday);
+    if (!need) {
+      out.push(repo);
+      continue;
+    }
+    try {
+      const resp = await axios.get(`https://api.github.com/repos/${repo.author}/${repo.name}`, {
+        headers: {
+          'User-Agent': 'developTools-ai-trending',
+          'Accept': 'application/vnd.github+json',
+        },
+        timeout: 8000,
+      });
+      out.push({
+        ...repo,
+        stars: resp.data?.stargazers_count || repo.stars || 0,
+        forks: resp.data?.forks_count || repo.forks || 0,
+        description: repo.description || resp.data?.description || '',
+      });
+    } catch (_) {
+      out.push(repo);
+    }
+  }
+  return out;
+}
+
+async function fetchGithubHtml(url) {
+  const resp = await axios.get(url, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      'Accept': 'text/html,application/xhtml+xml',
+      'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+    },
+    timeout: 15000,
+  });
+  return resp.data;
+}
+
+// 竖屏 GitHub 趋势动画窗口（9:16，适合手机录屏）
+function openTrendingReel(payload) {
+  trendingReelPayload = payload || { items: [], sinceLabel: '今日', langLabel: 'AI' };
+  if (trendingReelWindow && !trendingReelWindow.isDestroyed()) {
+    if (trendingReelWindow.isMinimized()) trendingReelWindow.restore();
+    trendingReelWindow.focus();
+    trendingReelWindow.webContents.send('trending-reel-data', trendingReelPayload);
+    return;
+  }
+  trendingReelWindow = new BrowserWindow({
+    width: 405,
+    height: 720,
+    resizable: true,
+    minimizable: true,
+    maximizable: false,
+    alwaysOnTop: true,
+    title: 'GitHub 趋势动画 · 竖屏录制',
+    backgroundColor: '#070912',
+    webPreferences: {
+      nodeIntegration: true,
+      contextIsolation: false,
+    },
+  });
+  trendingReelWindow.setAspectRatio(9 / 16);
+  trendingReelWindow.loadFile('trending-reel.html');
+  trendingReelWindow.on('closed', () => {
+    trendingReelWindow = null;
+    trendingReelPayload = null;
+  });
+}
+
+function sendTrendingReelCmd(cmd) {
+  if (trendingReelWindow && !trendingReelWindow.isDestroyed()) {
+    trendingReelWindow.webContents.send('trending-reel-cmd', cmd);
+    return true;
+  }
+  return false;
+}
+
+ipcMain.on('trending-reel-ready', (event) => {
+  if (trendingReelPayload) {
+    event.sender.send('trending-reel-data', trendingReelPayload);
+  }
+});
+
+ipcMain.handle('github-open-trending-reel', async (event, payload) => {
+  openTrendingReel(payload);
+  return { ok: true };
+});
+
+ipcMain.handle('github-trending-reel-cmd', async (event, cmd) => {
+  return { ok: sendTrendingReelCmd(cmd) };
+});
+
+// 每日 / 近期 AI 相关热门开源：趋势榜过滤 + GitHub Search 合并
+ipcMain.handle('github-fetch-ai-trending', async (event, since) => {
+  const sinceKey = since || 'daily';
+  const map = new Map();
+
+  const push = (repo) => {
+    if (!repo || !repo.author || !repo.name) return;
+    const key = `${repo.author}/${repo.name}`.toLowerCase();
+    if (map.has(key)) {
+      const old = map.get(key);
+      map.set(key, {
+        ...old,
+        ...repo,
+        stars: Math.max(old.stars || 0, repo.stars || 0),
+        starsToday: Math.max(old.starsToday || 0, repo.starsToday || 0),
+        description: repo.description || old.description,
+      });
+    } else {
+      map.set(key, repo);
+    }
+  };
+
+  try {
+    // 1) 全站趋势里筛 AI
+    try {
+      const html = await fetchGithubHtml(`https://github.com/trending?since=${sinceKey}`);
+      parseTrendingHtml(html).forEach((r) => {
+        if (AI_KW.test(`${r.name} ${r.description} ${r.author}`)) push(r);
+      });
+    } catch (_) { /* ignore */ }
+
+    // 2) Python 趋势（AI 项目集中）再筛一层
+    try {
+      const html = await fetchGithubHtml(`https://github.com/trending/python?since=${sinceKey}`);
+      parseTrendingHtml(html).forEach((r) => {
+        if (AI_KW.test(`${r.name} ${r.description} ${r.author}`)) push(r);
+      });
+    } catch (_) { /* ignore */ }
+
+    // 3) GitHub Search：近期热门 AI / LLM
+    try {
+      const day = new Date();
+      day.setDate(day.getDate() - (sinceKey === 'monthly' ? 30 : sinceKey === 'weekly' ? 7 : 3));
+      const pushed = day.toISOString().slice(0, 10);
+      const q = encodeURIComponent(`topic:llm OR topic:ai OR topic:generative-ai OR topic:chatgpt stars:>200 pushed:>${pushed}`);
+      const resp = await axios.get(`https://api.github.com/search/repositories?q=${q}&sort=stars&order=desc&per_page=20`, {
+        headers: {
+          'User-Agent': 'developTools-ai-trending',
+          'Accept': 'application/vnd.github+json',
+        },
+        timeout: 15000,
+      });
+      const items = (resp.data && resp.data.items) || [];
+      items.forEach((it) => {
+        push({
+          author: it.owner?.login || '',
+          name: it.name,
+          description: it.description || '',
+          language: it.language || '',
+          languageColor: '',
+          stars: it.stargazers_count || 0,
+          forks: it.forks_count || 0,
+          starsToday: 0,
+          url: it.html_url,
+        });
+      });
+    } catch (_) { /* ignore */ }
+
+    let list = [...map.values()]
+      .sort((a, b) => (b.starsToday || 0) - (a.starsToday || 0) || (b.stars || 0) - (a.stars || 0))
+      .slice(0, 8);
+
+    list = (await enrichRepoStars(list)).map(enrichAiItem);
+
+    if (!list.length) {
+      list = AI_TRENDING_FALLBACK.map(enrichAiItem);
+      return { items: list, fallback: true };
+    }
+    return { items: list, fallback: false };
+  } catch (e) {
+    return { items: AI_TRENDING_FALLBACK.map(enrichAiItem), fallback: true, error: e.message };
+  }
+});
+
 // GitHub Trending（解析 HTML，正则兼容新旧两种 article 结构）
 ipcMain.handle('github-fetch-trending', async (event, lang, since) => {
   try {
     const url = `https://github.com/trending/${lang || ''}?since=${since || 'daily'}`;
-    const resp = await axios.get(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml',
-        'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
-      },
-      timeout: 15000,
-    });
-    const html = resp.data;
-    const repos = [];
-    // 兼容 Box-row / TrendingBody > article 两种结构
-    const blockRe = /<article[^>]*class="[^"]*(?:Box-row|trending-item)[^"]*"[^>]*>([\s\S]*?)<\/article>/g;
-    let m;
-    while ((m = blockRe.exec(html)) && repos.length < 25) {
-      const block = m[1];
-      // 仓库全名：href="/author/name"
-      const fullMatch = block.match(/href="\/([^"\/]+)\/([^"\/]+)"/);
-      const author = fullMatch ? fullMatch[1] : '';
-      const name = fullMatch ? fullMatch[2] : '';
-      if (!author || !name || author === 'sponsors' || author === 'topics') continue;
-      const desc = (block.match(/<p[^>]*>([\s\S]*?)<\/p>/) || [])[1] || '';
-      const langMatch = block.match(/itemprop="programmingLanguage">([^<]+)</);
-      const langColor = (block.match(/<svg[^>]*>\s*<circle[^>]*fill="([^"]+)"/) || [])[1];
-      const stars = parseInt((block.match(/([\d,]+)\s*stars?\s*(?:today|this week|this month)/i) || [])[1]?.replace(/,/g, '') || '0', 10);
-      // 总 star：匹配 /stargazers 链接后的数字
-      const totalStars = parseInt((block.match(/\/stargazers[^>]*>[\s\S]*?(\d[\d,]*)/) || [])[1]?.replace(/,/g, '') || '0', 10);
-      const forks = parseInt((block.match(/\/forks[^>]*>[\s\S]*?(\d[\d,]*)/) || [])[1]?.replace(/,/g, '') || '0', 10);
-      repos.push({
-        author,
-        name,
-        description: desc.replace(/<[^>]+>/g, '').trim(),
-        language: langMatch ? langMatch[1].trim() : '',
-        languageColor: langColor || '',
-        stars: totalStars || 0,
-        forks: forks || 0,
-        starsToday: stars,
-        url: `https://github.com/${author}/${name}`,
-      });
-    }
+    const repos = parseTrendingHtml(await fetchGithubHtml(url));
     if (!repos.length) return { items: TRENDING_FALLBACK, fallback: true };
     return { items: repos, fallback: false };
   } catch (e) {
