@@ -2164,3 +2164,175 @@ ipcMain.handle('auto-launch-set', (event, enabled) => {
     return { ok: false, error: e.message };
   }
 });
+
+// ── 宝塔面板 ──
+const DEFAULT_BAOTA_CONFIG = {
+  baseUrl: 'https://34.58.218.95:17069',
+  entryPath: '/0ab2f6fe',
+  username: '',
+  password: '',
+  autofill: true,
+};
+
+let baotaWindow = null;
+
+function baotaConfigPath() {
+  return path.join(app.getPath('userData'), 'baota-config.json');
+}
+
+function loadBaotaConfig() {
+  try {
+    const file = baotaConfigPath();
+    if (fs.existsSync(file)) {
+      const raw = JSON.parse(fs.readFileSync(file, 'utf-8'));
+      return { ...DEFAULT_BAOTA_CONFIG, ...raw };
+    }
+  } catch (e) {
+    console.error('[baota] 读取配置失败:', e.message);
+  }
+  return { ...DEFAULT_BAOTA_CONFIG };
+}
+
+function saveBaotaConfig(cfg) {
+  const next = { ...DEFAULT_BAOTA_CONFIG, ...cfg };
+  const file = baotaConfigPath();
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, JSON.stringify(next, null, 2), 'utf-8');
+  return true;
+}
+
+function joinBaotaUrl(baseUrl, openPath) {
+  const base = String(baseUrl || '').replace(/\/+$/, '');
+  let p = String(openPath || '/');
+  if (!p.startsWith('/')) p = `/${p}`;
+  return `${base}${p}`;
+}
+
+function tryAutofillBaotaLogin(win, cfg) {
+  if (!cfg?.autofill || !cfg.username || !cfg.password || !win || win.isDestroyed()) return;
+  const user = JSON.stringify(String(cfg.username));
+  const pass = JSON.stringify(String(cfg.password));
+  const script = `
+    (() => {
+      const user = ${user};
+      const pass = ${pass};
+      const userSel = [
+        'input[name="username"]', 'input[name="user"]', 'input#username',
+        'input[type="text"]', 'input[placeholder*="用户"]', 'input[placeholder*="帐"]'
+      ];
+      const passSel = [
+        'input[name="password"]', 'input[name="passwd"]', 'input#password', 'input[type="password"]'
+      ];
+      const pick = (list) => {
+        for (const s of list) {
+          const el = document.querySelector(s);
+          if (el && el.offsetParent !== null) return el;
+        }
+        return null;
+      };
+      const u = pick(userSel);
+      const p = pick(passSel);
+      if (!u || !p) return false;
+      u.focus(); u.value = user; u.dispatchEvent(new Event('input', { bubbles: true }));
+      p.focus(); p.value = pass; p.dispatchEvent(new Event('input', { bubbles: true }));
+      return true;
+    })();
+  `;
+  win.webContents.executeJavaScript(script, true).catch(() => {});
+}
+
+function openBaotaWindow(cfg, openPath) {
+  const targetUrl = joinBaotaUrl(cfg.baseUrl, openPath || cfg.entryPath || '/');
+  let host = '';
+  try {
+    host = new URL(cfg.baseUrl).host;
+  } catch {
+    throw new Error('面板地址无效');
+  }
+
+  const ses = session.fromPartition('persist:baota-panel');
+  const allowedHost = host.split(':')[0];
+  ses.setCertificateVerifyProc((request, callback) => {
+    const reqHost = String(request.hostname || '');
+    // Allow self-signed cert only for the configured panel host.
+    if (reqHost === allowedHost || reqHost === host) {
+      callback(0);
+      return;
+    }
+    callback(-3);
+  });
+
+  if (baotaWindow && !baotaWindow.isDestroyed()) {
+    baotaWindow.loadURL(targetUrl);
+    if (baotaWindow.isMinimized()) baotaWindow.restore();
+    baotaWindow.focus();
+    baotaWindow.webContents.once('did-finish-load', () => tryAutofillBaotaLogin(baotaWindow, cfg));
+    return targetUrl;
+  }
+
+  baotaWindow = new BrowserWindow({
+    width: 1280,
+    height: 860,
+    title: '宝塔面板',
+    autoHideMenuBar: true,
+    webPreferences: {
+      session: ses,
+      nodeIntegration: false,
+      contextIsolation: true,
+      sandbox: true,
+    },
+  });
+
+  baotaWindow.webContents.setWindowOpenHandler(({ url }) => {
+    try {
+      const u = new URL(url);
+      if (u.host === host) {
+        baotaWindow.loadURL(url);
+        return { action: 'deny' };
+      }
+    } catch {
+      /* ignore */
+    }
+    shell.openExternal(url);
+    return { action: 'deny' };
+  });
+
+  baotaWindow.webContents.on('did-finish-load', () => tryAutofillBaotaLogin(baotaWindow, cfg));
+  baotaWindow.on('closed', () => {
+    baotaWindow = null;
+  });
+  baotaWindow.loadURL(targetUrl);
+  return targetUrl;
+}
+
+ipcMain.handle('baota-get-config', () => loadBaotaConfig());
+
+ipcMain.handle('baota-save-config', (_event, cfg) => {
+  try {
+    saveBaotaConfig(cfg || {});
+    return true;
+  } catch (e) {
+    console.error('[baota] 保存失败:', e.message);
+    return false;
+  }
+});
+
+ipcMain.handle('baota-open', async (_event, payload) => {
+  try {
+    const cfg = { ...loadBaotaConfig(), ...(payload || {}) };
+    if (payload?.baseUrl) {
+      // Keep latest form values without forcing save.
+      saveBaotaConfig({
+        baseUrl: cfg.baseUrl,
+        entryPath: cfg.entryPath,
+        username: cfg.username,
+        password: cfg.password,
+        autofill: cfg.autofill,
+      });
+    }
+    const url = openBaotaWindow(cfg, payload?.openPath || cfg.entryPath);
+    return { ok: true, url };
+  } catch (e) {
+    return { ok: false, error: e.message || String(e) };
+  }
+});

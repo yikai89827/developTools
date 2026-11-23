@@ -24,45 +24,49 @@
           <span class="label">屏幕录制</span>
           <span class="shortcut">Ctrl+2</span>
         </button>
+        <button class="tool-btn" data-tool="baota">
+          <span class="icon">🖥️</span>
+          <span class="label">宝塔面板</span>
+          <span class="shortcut">Ctrl+3</span>
+        </button>
         <button class="tool-btn" data-tool="trending">
           <span class="icon">🔥</span>
           <span class="label">GitHub趋势</span>
-          <span class="shortcut">Ctrl+3</span>
+          <span class="shortcut">Ctrl+4</span>
         </button>
         <button class="tool-btn" data-tool="color">
           <span class="icon">🎨</span>
           <span class="label">颜色工具</span>
-          <span class="shortcut">Ctrl+4</span>
+          <span class="shortcut">Ctrl+5</span>
         </button>
         <button class="tool-btn" data-tool="json">
           <span class="icon">📄</span>
           <span class="label">JSON工具</span>
-          <span class="shortcut">Ctrl+5</span>
+          <span class="shortcut">Ctrl+6</span>
         </button>
         <button class="tool-btn" data-tool="crypto">
           <span class="icon">🔐</span>
           <span class="label">加密工具</span>
-          <span class="shortcut">Ctrl+6</span>
+          <span class="shortcut">Ctrl+7</span>
         </button>
         <button class="tool-btn" data-tool="code">
           <span class="icon">💻</span>
           <span class="label">代码工具</span>
-          <span class="shortcut">Ctrl+7</span>
+          <span class="shortcut">Ctrl+8</span>
         </button>
         <button class="tool-btn" data-tool="http">
           <span class="icon">🌐</span>
           <span class="label">HTTP工具</span>
-          <span class="shortcut">Ctrl+8</span>
+          <span class="shortcut">Ctrl+9</span>
         </button>
         <button class="tool-btn" data-tool="regex">
           <span class="icon">🔍</span>
           <span class="label">正则工具</span>
-          <span class="shortcut">Ctrl+9</span>
+          <span class="shortcut">Ctrl+0</span>
         </button>
         <button class="tool-btn" data-tool="time">
           <span class="icon">⏰</span>
           <span class="label">时间转换</span>
-          <span class="shortcut">Ctrl+0</span>
         </button>
         <button class="tool-btn" data-tool="base">
           <span class="icon">🔢</span>
@@ -1148,6 +1152,48 @@
         </div>
         <div class="panel-body">
           <div id="tech-daily-content"><div class="news-loading">加载中...</div></div>
+        </div>
+      </div>
+
+      <!-- 宝塔面板 -->
+      <div id="baota-tool" class="tool-panel">
+        <div class="panel-header">
+          <h2>🖥️ 宝塔面板</h2>
+          <div class="algo-controls">
+            <button class="btn btn-secondary" id="baota-open-panel" type="button">打开面板</button>
+            <button class="btn btn-primary" id="baota-save" type="button">保存配置</button>
+          </div>
+        </div>
+        <div class="panel-body">
+          <div class="tool-form">
+            <p class="screenshot-tip">账号密码仅保存在本机用户目录，不会写入项目仓库。首次打开会进入安全入口，登录后 Cookie 会保留在独立会话里。</p>
+            <div class="input-group">
+              <label>面板地址（含端口）</label>
+              <input type="url" id="baota-base-url" placeholder="https://x.x.x.x:17069" />
+            </div>
+            <div class="input-group">
+              <label>安全入口路径</label>
+              <input type="text" id="baota-entry-path" placeholder="/0ab2f6fe" />
+            </div>
+            <div class="input-group">
+              <label>用户名</label>
+              <input type="text" id="baota-username" placeholder="面板登录用户名" autocomplete="username" />
+            </div>
+            <div class="input-group">
+              <label>密码</label>
+              <input type="password" id="baota-password" placeholder="面板登录密码" autocomplete="current-password" />
+            </div>
+            <div class="checkbox-group">
+              <label><input type="checkbox" id="baota-autofill" checked /> 打开登录页时尝试自动填充账号密码</label>
+            </div>
+            <p class="screenshot-tip" id="baota-status">配置未加载</p>
+            <div class="baota-shortcuts" id="baota-shortcuts">
+              <button type="button" class="btn btn-secondary baota-shortcut" data-role="home" data-path="/0ab2f6fe">🏠 面板首页</button>
+              <button type="button" class="btn btn-secondary baota-shortcut" data-path="/xterm">⌨️ 终端</button>
+              <button type="button" class="btn btn-secondary baota-shortcut" data-path="/files">📁 文件管理</button>
+              <button type="button" class="btn btn-secondary baota-shortcut" data-path="/site/node">🟢 Node 项目</button>
+            </div>
+          </div>
         </div>
       </div>
 

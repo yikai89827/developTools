@@ -21,6 +21,7 @@ const { initGithubTrending } = require('./js/tools/github-trending');
 const { initTechDaily } = require('./js/tools/tech-daily');
 const { initPetTool } = require('./js/tools/pet');
 const { initScreenRecorder } = require('./js/tools/screen-recorder');
+const { initBaotaTool } = require('./js/tools/baota');
 
 document.addEventListener('DOMContentLoaded', () => {
   initSidebar();
@@ -46,4 +47,5 @@ document.addEventListener('DOMContentLoaded', () => {
   initTechDaily();
   initPetTool();
   initScreenRecorder();
+  initBaotaTool();
 });
